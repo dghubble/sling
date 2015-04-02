@@ -26,6 +26,111 @@ func TestNew(t *testing.T) {
 	}
 }
 
+// i.e Sling.Request()
+func TestCopy(t *testing.T) {
+	cases := []*Sling{
+		&Sling{httpClient: &http.Client{}, Method: "GET", BaseUrl: "http://example.com", PathUrl: "/path"},
+		&Sling{httpClient: nil, Method: "", BaseUrl: "http://example.com", PathUrl: ""},
+	}
+	for _, sling := range cases {
+		copy := sling.Request()
+		if copy.httpClient != sling.httpClient {
+			t.Errorf("expected %p, got %p", sling.httpClient, copy.httpClient)
+		}
+		if copy.Method != sling.Method {
+			t.Errorf("expected %s, got %s", sling.Method, copy.Method)
+		}
+		if copy.BaseUrl != sling.BaseUrl {
+			t.Errorf("expected %s, got %s", sling.BaseUrl, copy.BaseUrl)
+		}
+		if copy.PathUrl != sling.PathUrl {
+			t.Errorf("expected %s, got %s", sling.PathUrl, copy.PathUrl)
+		}
+	}
+}
+
+func TestBaseSetter(t *testing.T) {
+	cases := []string{"http://example.com", "", "/path", "path"}
+	for _, base := range cases {
+		sling := New(nil)
+		sling.Base(base)
+		if sling.BaseUrl != base {
+			t.Errorf("expected %s, got %s", base, sling.Base)
+		}
+	}
+}
+
+func TestPathSetter(t *testing.T) {
+	cases := []string{"http://example.com", "", "/path", "path"}
+	for _, path := range cases {
+		sling := New(nil)
+		sling.Path(path)
+		if sling.PathUrl != path {
+			t.Errorf("expected %s, got %s", path, sling.PathUrl)
+		}
+	}
+}
+
+func TestGetSetter(t *testing.T) {
+	expectedPath := "http://example.com"
+	sling := New(nil)
+	sling.Get(expectedPath)
+	if sling.Method != GET {
+		t.Errorf("expected %s, got %s", GET, sling.Method)
+	}
+	if sling.PathUrl != expectedPath {
+		t.Errorf("expected %s, got %s", expectedPath, sling.PathUrl)
+	}
+}
+
+func TestPostSetter(t *testing.T) {
+	expectedPath := "http://example.com"
+	sling := New(nil)
+	sling.Post(expectedPath)
+	if sling.Method != POST {
+		t.Errorf("expected %s, got %s", POST, sling.Method)
+	}
+	if sling.PathUrl != expectedPath {
+		t.Errorf("expected %s, got %s", expectedPath, sling.PathUrl)
+	}
+}
+
+func TestHttpRequest_urlAndMethod(t *testing.T) {
+	cases := []struct {
+		sling          *Sling
+		expectedMethod string
+		expectedUrl    string
+		expectedErr    error
+	}{
+		{New(nil).Base("http://a.io"), "", "http://a.io", nil},
+		{New(nil).Path("http://a.io"), "", "http://a.io", nil},
+		{New(nil).Get("http://a.io"), GET, "http://a.io", nil},
+		{New(nil).Base("http://a.io").Path("/foo"), "", "http://a.io/foo", nil},
+		{New(nil).Base("http://a.io").Post("/foo"), POST, "http://a.io/foo", nil},
+		// if relative path is an absolute url, base is ignored
+		{New(nil).Base("http://a.io").Path("http://b.io"), "", "http://b.io", nil},
+		// last setter takes priority
+		{New(nil).Base("http://a.io").Base("http://b.io"), "", "http://b.io", nil},
+		{New(nil).Path("http://a.io").Path("http://b.io"), "", "http://b.io", nil},
+		{New(nil).Post("http://a.io").Get("http://b.io"), GET, "http://b.io", nil},
+		{New(nil).Get("http://b.io").Post("http://a.io"), POST, "http://a.io", nil},
+		// removes extra '/' between base and ref url
+		{New(nil).Base("http://a.io/").Get("/foo"), GET, "http://a.io/foo", nil},
+	}
+	for _, c := range cases {
+		req, err := c.sling.HttpRequest()
+		if err != c.expectedErr {
+			t.Errorf("expected error %v, got %v for %+v", c.expectedErr, err, c.sling)
+		}
+		if req.URL.String() != c.expectedUrl {
+			t.Errorf("expected url %s, got %s for %+v", c.expectedUrl, req.URL.String(), c.sling)
+		}
+		if req.Method != c.expectedMethod {
+			t.Errorf("expected method %s, got %s for %+v", c.expectedMethod, req.Method, c.sling)
+		}
+	}
+}
+
 // mockServer returns an httptest.Server which always returns the given body.
 // The caller must close the test server.
 func mockServer(body string) (*http.Client, *httptest.Server) {

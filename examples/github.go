@@ -8,19 +8,6 @@ import (
 
 const baseUrl = "https://api.github.com"
 
-// Create a client
-
-type Client struct {
-	Issues *IssueService
-	// other service endpoints...
-}
-
-func NewClient(httpClient *http.Client) *Client {
-	return &Client{
-		Issues: NewIssueService(httpClient),
-	}
-}
-
 // Define models
 
 type Issue struct {
@@ -35,27 +22,40 @@ type Issue struct {
 // Implement services
 
 type IssueService struct {
-	endpoint *sling.Sling
+	sling *sling.Sling
 }
 
 func NewIssueService(httpClient *http.Client) *IssueService {
 	return &IssueService{
-		endpoint: sling.New(httpClient),
+		sling: sling.New(httpClient).Base(baseUrl),
 	}
 }
 
 func (srvc IssueService) List(owner, repo string) ([]Issue, *http.Response, error) {
 	var issues []Issue
 	path := fmt.Sprintf("/repos/%s/%s/issues", owner, repo)
-	req, _ := http.NewRequest("GET", baseUrl+path, nil)
-	resp, err := srvc.endpoint.Fire(req, &issues)
+	resp, err := srvc.sling.Request().Get(path).Do(&issues)
 	return issues, resp, err
+}
+
+// (optional) Create a client to wrap services
+
+// Tiny Github client
+type Client struct {
+	IssueService *IssueService
+	// other service endpoints...
+}
+
+func NewClient(httpClient *http.Client) *Client {
+	return &Client{
+		IssueService: NewIssueService(httpClient),
+	}
 }
 
 // example use of the tiny Github API above
 
 func main() {
 	client := NewClient(&http.Client{})
-	issues, _, _ := client.Issues.List("golang", "go")
+	issues, _, _ := client.IssueService.List("golang", "go")
 	fmt.Printf("issues: %#v\n", issues)
 }
