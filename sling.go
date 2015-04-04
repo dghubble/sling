@@ -7,8 +7,12 @@ import (
 )
 
 const (
-	GET  = "GET"
-	POST = "POST"
+	HEAD   = "HEAD"
+	GET    = "GET"
+	POST   = "POST"
+	PUT    = "PUT"
+	PATCH  = "PATCH"
+	DELETE = "DELETE"
 )
 
 // Sling is an HTTP Request builder and sender.
@@ -65,6 +69,12 @@ func (s *Sling) Path(pathUrl string) *Sling {
 	return s
 }
 
+// Head sets the Sling method to HEAD and sets the given pathUrl.
+func (s *Sling) Head(pathUrl string) *Sling {
+	s.Method = HEAD
+	return s.Path(pathUrl)
+}
+
 // Get sets the Sling method to GET and sets the given pathUrl.
 func (s *Sling) Get(pathUrl string) *Sling {
 	s.Method = GET
@@ -74,6 +84,24 @@ func (s *Sling) Get(pathUrl string) *Sling {
 // Post sets the Sling method to POST and sets the given pathUrl.
 func (s *Sling) Post(pathUrl string) *Sling {
 	s.Method = POST
+	return s.Path(pathUrl)
+}
+
+// Put sets the Sling method to PUT and sets the given pathUrl.
+func (s *Sling) Put(pathUrl string) *Sling {
+	s.Method = PUT
+	return s.Path(pathUrl)
+}
+
+// Patch sets the Sling method to PATCH and sets the given pathUrl.
+func (s *Sling) Patch(pathUrl string) *Sling {
+	s.Method = PATCH
+	return s.Path(pathUrl)
+}
+
+// Delete sets the Sling method to DELETE and sets the given pathUrl.
+func (s *Sling) Delete(pathUrl string) *Sling {
+	s.Method = DELETE
 	return s.Path(pathUrl)
 }
 

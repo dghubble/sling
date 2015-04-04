@@ -71,27 +71,22 @@ func TestPathSetter(t *testing.T) {
 	}
 }
 
-func TestGetSetter(t *testing.T) {
-	expectedPath := "http://example.com"
-	sling := New(nil)
-	sling.Get(expectedPath)
-	if sling.Method != GET {
-		t.Errorf("expected %s, got %s", GET, sling.Method)
+func TestMethodSetters(t *testing.T) {
+	cases := []struct {
+		sling          *Sling
+		expectedMethod string
+	}{
+		{New(nil).Head("http://a.io"), HEAD},
+		{New(nil).Get("http://a.io"), GET},
+		{New(nil).Post("http://a.io"), POST},
+		{New(nil).Put("http://a.io"), PUT},
+		{New(nil).Patch("http://a.io"), PATCH},
+		{New(nil).Delete("http://a.io"), DELETE},
 	}
-	if sling.PathUrl != expectedPath {
-		t.Errorf("expected %s, got %s", expectedPath, sling.PathUrl)
-	}
-}
-
-func TestPostSetter(t *testing.T) {
-	expectedPath := "http://example.com"
-	sling := New(nil)
-	sling.Post(expectedPath)
-	if sling.Method != POST {
-		t.Errorf("expected %s, got %s", POST, sling.Method)
-	}
-	if sling.PathUrl != expectedPath {
-		t.Errorf("expected %s, got %s", expectedPath, sling.PathUrl)
+	for _, c := range cases {
+		if c.sling.Method != c.expectedMethod {
+			t.Errorf("expected method %s, got %s", c.expectedMethod, c.sling.Method)
+		}
 	}
 }
 
@@ -105,6 +100,7 @@ func TestHttpRequest_urlAndMethod(t *testing.T) {
 		{New(nil).Base("http://a.io"), "", "http://a.io", nil},
 		{New(nil).Path("http://a.io"), "", "http://a.io", nil},
 		{New(nil).Get("http://a.io"), GET, "http://a.io", nil},
+		{New(nil).Put("http://a.io"), PUT, "http://a.io", nil},
 		{New(nil).Base("http://a.io").Path("/foo"), "", "http://a.io/foo", nil},
 		{New(nil).Base("http://a.io").Post("/foo"), POST, "http://a.io/foo", nil},
 		// if relative path is an absolute url, base is ignored
