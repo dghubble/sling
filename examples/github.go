@@ -56,6 +56,7 @@ func NewClient(httpClient *http.Client) *Client {
 
 func main() {
 	client := NewClient(&http.Client{})
-	issues, _, _ := client.IssueService.List("golang", "go")
-	fmt.Printf("issues: %#v\n", issues)
+	issues, resp, err := client.IssueService.List("golang", "go")
+	fmt.Printf("%#v\n", issues)
+	fmt.Println(resp, err)
 }

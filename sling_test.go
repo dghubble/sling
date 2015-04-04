@@ -180,3 +180,23 @@ func TestFire(t *testing.T) {
 		t.Errorf("expected %d, got %d", expectedFavoriteCount, model.FavoriteCount)
 	}
 }
+
+func TestFire_nilV(t *testing.T) {
+	client, server := mockServer("")
+	defer server.Close()
+
+	sling := New(client)
+	req, _ := http.NewRequest("GET", server.URL, nil)
+	resp, err := sling.Fire(req, nil)
+
+	if err != nil {
+		t.Errorf("expected nil, got %v", err)
+	}
+	if resp.StatusCode != 200 {
+		t.Errorf("expected %d, got %d", 200, resp.StatusCode)
+	}
+	expectedReadError := "http: read on closed response body"
+	if _, err = ioutil.ReadAll(resp.Body); err == nil || err.Error() != expectedReadError {
+		t.Errorf("expected %s, got %v", expectedReadError, err)
+	}
+}

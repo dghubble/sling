@@ -36,13 +36,12 @@ func New(httpClient *http.Client) *Sling {
 // Request returns a copy of the Sling, which is useful for creating a new,
 // mutable Sling with properties from a base Sling.
 // For example,
-// baseSling := sling.New()
-// baseSling.BaseUrl = "https://api.example.com"
+// baseSling := sling.New().Base("https://api.io")
 // fooSling := baseSling.Request().Get("/foo")
 // barSling := baseSling.Request().Get("/bar")
 //
-// This creates a Sling which will send requests to https://api.example.com/foo
-// and another which will send requests to https://api.example.com/bar.
+// This creates a Sling which will send requests to https://api.io/foo and
+// another which will send requests to https://api.io/bar.
 func (s *Sling) Request() *Sling {
 	return &Sling{
 		httpClient: s.httpClient,
@@ -111,12 +110,14 @@ func (s *Sling) Fire(req *http.Request, v interface{}) (*http.Response, error) {
 	}
 	// when err is nil, resp contains a non-nil resp.Body which must be closed
 	defer resp.Body.Close()
-	err = decodeResponse(resp, v)
+	if v != nil {
+		err = decodeResponse(resp, v)
+	}
 	return resp, err
 }
 
 // decodeResponse decodes Response Body encoded as JSON into the value pointed
-// to by v. Caller should call resp.Body.Close().
+// to by v. Caller must provide non-nil v and close resp.Body once complete.
 func decodeResponse(resp *http.Response, v interface{}) error {
 	return json.NewDecoder(resp.Body).Decode(v)
 }
