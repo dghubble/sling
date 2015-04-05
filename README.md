@@ -25,19 +25,22 @@ Read [GoDoc](https://godoc.org/github.com/dghubble/sling)
 Use a simple Sling to set request properties (`Path`, `QueryParams`, etc.) and then create a new `http.Request` by calling `HttpRequest()`.
 
 ```go
-req, err := sling.New().Client(client).Base("https://api.github.com/")
-    .HttpRequest()
+req, err := sling.New().Get("https://example.com").HttpRequest()
 client.Do(req)
 ```
 
 Slings are much more powerful though. Use them to create REST clients which wrap complex API endpoints. Copy a base Sling with `Request()` to avoid repeating common configuration.
 
 ```go
-base := sling.New().Base("https://https://api.twitter.com/1.1/")
+const twitterApi = "https://https://api.twitter.com/1.1/"
+base := sling.New().Base(twitterApi).Client(httpAuthClient)
+
 users := base.Request().Path("users/")
 statuses := base.Request().Path("statuses/")
 search := base.Request().Path("search/") 
 ```
+
+### Encode / Decode
 
 Define url parameter structs and use `QueryStruct` to encode query parameters.
 
@@ -54,14 +57,14 @@ type IssueParams struct {
 ```
 
 ```go
-githubBase := sling.New().Base("https://api.github.com/")
+githubBase := sling.New().Base("https://api.github.com/").Client(httpClient)
+path := fmt.Sprintf("repos/%s/%s/issues", owner, repo)
 
 params := {Sort: "updated"}
-path := fmt.Sprintf("repos/%s/%s/issues", owner, repo)
 req, err := githubBase.Request().Get(path).QueryStruct(params).HttpRequest()
 ```
 
-Define JSON models and use `Do(v interface{})` to send a new Request and decode the response Body.
+Define expected value structs. Use `Do(v interface{})` to send a new Request and decode the response into the value.
 
 ```go
 // Github Issue (abbreviated)
@@ -78,14 +81,13 @@ type Issue struct {
 ```go
 
 var issues []Issue
-path := fmt.Sprintf("repos/%s/%s/issues", owner, repo)
 req, err := githubBase.Request().Get(path).QueryStruct(params).Do(&issues)
 fmt.Println(issues, resp, err)
 ```
 
-### Building an API
+### Build an API
 
-A realistic API might define an endpoint (also called a service) for each type of resource. For example, here is a tiny Github IssueService which supports the [repository issues](https://developer.github.com/v3/issues/#list-issues-for-a-repository) route.
+APIs typically define an endpoint (also called a service) for each type of resource. For example, here is a tiny Github IssueService which supports the [repository issues](https://developer.github.com/v3/issues/#list-issues-for-a-repository) route.
 
 ```go
 type IssueService struct {
@@ -114,7 +116,7 @@ None yet! Create a Pull Request to add a link to your own API.
 
 Many client libraries follow the lead of [google/go-github](https://github.com/google/go-github) (our inspiration!), but do so by reimplementing logic common to all clients.
 
-Sling combines those good ideas to provide general primitives for building REST API clients.
+This project borrows and abstracts those ideas into a Sling, an agnostic component any API client can use for creating and sending requests.
 
 ## License
 

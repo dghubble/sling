@@ -19,7 +19,7 @@ const (
 // Sling is an HTTP Request builder and sender.
 type Sling struct {
 	// http Client for doing requests
-	httpClient *http.Client
+	HttpClient *http.Client
 	// HTTP method (GET, POST, etc.)
 	Method string
 	// raw url string for requests
@@ -31,7 +31,7 @@ type Sling struct {
 // New returns a new Sling with an http DefaultClient.
 func New() *Sling {
 	return &Sling{
-		httpClient:   http.DefaultClient,
+		HttpClient:   http.DefaultClient,
 		queryStructs: make([]interface{}, 0),
 	}
 }
@@ -50,7 +50,7 @@ func New() *Sling {
 // https://api.io/bar/ respectively and baseSling is unmodified.
 func (s *Sling) Request() *Sling {
 	return &Sling{
-		httpClient:   s.httpClient,
+		HttpClient:   s.HttpClient,
 		Method:       s.Method,
 		RawUrl:       s.RawUrl,
 		queryStructs: append([]interface{}{}, s.queryStructs...),
@@ -59,13 +59,13 @@ func (s *Sling) Request() *Sling {
 
 // Fluent setters
 
-// Client sets the httpClient used to do requests. If a nil client is given,
+// Client sets the http Client used to do requests. If a nil client is given,
 // the http.DefaultClient will be used.
 func (s *Sling) Client(httpClient *http.Client) *Sling {
 	if httpClient == nil {
-		s.httpClient = http.DefaultClient
+		s.HttpClient = http.DefaultClient
 	} else {
-		s.httpClient = httpClient
+		s.HttpClient = httpClient
 	}
 	return s
 }
@@ -184,7 +184,7 @@ func addQueryStructs(reqURL *url.URL, queryStructs []interface{}) error {
 //
 // Note that non-2xx StatusCodes are valid responses, not errors.
 func (s *Sling) Fire(req *http.Request, v interface{}) (*http.Response, error) {
-	resp, err := s.httpClient.Do(req)
+	resp, err := s.HttpClient.Do(req)
 	if err != nil {
 		return resp, err
 	}

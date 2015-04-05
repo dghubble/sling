@@ -11,8 +11,8 @@ import (
 
 func TestNew(t *testing.T) {
 	sling := New()
-	if sling.httpClient != http.DefaultClient {
-		t.Errorf("expected %v, got %v", http.DefaultClient, sling.httpClient)
+	if sling.HttpClient != http.DefaultClient {
+		t.Errorf("expected %v, got %v", http.DefaultClient, sling.HttpClient)
 	}
 	if sling.queryStructs == nil {
 		t.Errorf("queryStructs not initialized with make")
@@ -22,16 +22,16 @@ func TestNew(t *testing.T) {
 // i.e Sling.Request()
 func TestCopy(t *testing.T) {
 	cases := []*Sling{
-		&Sling{httpClient: &http.Client{}, Method: "GET", RawUrl: "http://example.com"},
-		&Sling{httpClient: nil, Method: "", RawUrl: "http://example.com"},
+		&Sling{HttpClient: &http.Client{}, Method: "GET", RawUrl: "http://example.com"},
+		&Sling{HttpClient: nil, Method: "", RawUrl: "http://example.com"},
 		&Sling{queryStructs: make([]interface{}, 0)},
 		&Sling{queryStructs: []interface{}{paramsA}},
 		&Sling{queryStructs: []interface{}{paramsA, paramsB}},
 	}
 	for _, sling := range cases {
 		copy := sling.Request()
-		if copy.httpClient != sling.httpClient {
-			t.Errorf("expected %p, got %p", sling.httpClient, copy.httpClient)
+		if copy.HttpClient != sling.HttpClient {
+			t.Errorf("expected %p, got %p", sling.HttpClient, copy.HttpClient)
 		}
 		if copy.Method != sling.Method {
 			t.Errorf("expected %s, got %s", sling.Method, copy.Method)
@@ -61,8 +61,8 @@ func TestClientSetter(t *testing.T) {
 	for _, c := range cases {
 		sling := New()
 		sling.Client(c.input)
-		if sling.httpClient != c.expected {
-			t.Errorf("expected %v, got %v", c.expected, sling.httpClient)
+		if sling.HttpClient != c.expected {
+			t.Errorf("expected %v, got %v", c.expected, sling.HttpClient)
 		}
 	}
 }
