@@ -21,10 +21,8 @@ type Sling struct {
 	httpClient *http.Client
 	// HTTP method (GET, POST, etc.)
 	Method string
-	// base url for requests
-	BaseUrl string
-	// path url to resolve relative to BaseUrl
-	PathUrl string
+	// raw url string for requests
+	RawUrl string
 }
 
 // New returns a new Sling.
@@ -40,32 +38,38 @@ func New(httpClient *http.Client) *Sling {
 // Request returns a copy of the Sling, which is useful for creating a new,
 // mutable Sling with properties from a base Sling.
 // For example,
-// baseSling := sling.New().Base("https://api.io")
-// fooSling := baseSling.Request().Get("/foo")
-// barSling := baseSling.Request().Get("/bar")
+// baseSling := sling.New(nil).Base("https://api.io/")
+// fooSling := baseSling.Request().Get("foo/")
+// barSling := baseSling.Request().Get("bar/")
 //
-// This creates a Sling which will send requests to https://api.io/foo and
-// another which will send requests to https://api.io/bar.
+// fooSling and barSling will send requests to https://api.io/foo/ and
+// https://api.io/bar/ respectively and baseSling is unmodified.
 func (s *Sling) Request() *Sling {
 	return &Sling{
 		httpClient: s.httpClient,
 		Method:     s.Method,
-		BaseUrl:    s.BaseUrl,
-		PathUrl:    s.PathUrl,
+		RawUrl:     s.RawUrl,
 	}
 }
 
 // Fluent setters
 
-// Base sets the Sling BaseUrl
-func (s *Sling) Base(baseUrl string) *Sling {
-	s.BaseUrl = baseUrl
+// Base sets the RawUrl. If you intend to extend the url with Path,
+// baseUrl should be specified with a trailing slash.
+func (s *Sling) Base(rawurl string) *Sling {
+	s.RawUrl = rawurl
 	return s
 }
 
-// Path sets the Sling PathUrl.
-func (s *Sling) Path(pathUrl string) *Sling {
-	s.PathUrl = pathUrl
+// Path extends the RawUrl with the given path by resolving the reference to
+// an absolute URL. If parsing errors occur, the RawUrl is left unmodified.
+func (s *Sling) Path(path string) *Sling {
+	baseURL, baseErr := url.Parse(s.RawUrl)
+	pathURL, pathErr := url.Parse(path)
+	if baseErr == nil && pathErr == nil {
+		s.RawUrl = baseURL.ResolveReference(pathURL).String()
+		return s
+	}
 	return s
 }
 
@@ -107,18 +111,12 @@ func (s *Sling) Delete(pathUrl string) *Sling {
 
 // Performing Requests
 
-// NewRequest returns a new http.Request built by merging the Request config
-// with the Sling properties (e.g. "http://example.com" + "/resource").
+// NewRequest returns a new http.Request created with the Sling properties.
 func (s *Sling) HttpRequest() (*http.Request, error) {
-	baseURL, err := url.Parse(s.BaseUrl)
+	reqURL, err := url.Parse(s.RawUrl)
 	if err != nil {
 		return nil, err
 	}
-	pathURL, err := url.Parse(s.PathUrl)
-	if err != nil {
-		return nil, err
-	}
-	reqURL := baseURL.ResolveReference(pathURL)
 	req, err := http.NewRequest(s.Method, reqURL.String(), nil)
 	if err != nil {
 		return nil, err
