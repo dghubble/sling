@@ -7,9 +7,10 @@ Slings store http Request properties to simplify creating new Requests, sending 
 
 ## Features
 
-* Setters for Get/Post/Put/Patch/Delete/Head
-* Resolves base and path urls
-* Decodes JSON responses
+* Base/Path - path extend a Sling for different endpoints
+* Method Setters: Get/Post/Put/Patch/Delete/Head
+* Embeds your Http Client 
+* Receive to decode JSON success responses
 
 ## Install
 
@@ -24,20 +25,20 @@ Read [GoDoc](https://godoc.org/github.com/dghubble/sling)
 Use a simple Sling to set request properties (`Path`, `QueryParams`, etc.) and create a new `http.Request` by calling `HttpRequest()`.
 
 ```go
-req, err := sling.New(nil).Base("https://api.github.io").HttpRequest()
+req, err := sling.New().Client(client).Base("https://api.twitter.com/1.1/").HttpRequest()
 client.Do(req)
 ```
 
 Slings are much more powerful though. Use them to create REST clients which wrap complex API endpoints. Copy a base Sling with `Request()` to avoid repeating common configuration.
 
 ```go
-client := &http.Client{}
-base := sling.New(client).Base("https://api.twitter.com/1.1")
-issueServiceSling := base.Request().Path("/users")
-statusesSling := base.Request().Path("/statuses")
+base := sling.New().Base("https://https://api.twitter.com/1.1/")
+users := base.Request().Path("users/")
+statuses := base.Request().Path("statuses/")
+search := base.Request().Path("search/") 
 ```
 
-Avoid writing another client with encoding, decoding, and network logic. Define your models and use Sling's `Do(interface{})` to send a new Request and decode the response.
+Avoid writing another client with encoding, decoding, and network logic. Define and tag your JSON models to use `Do(interface{})` to send a new Request and decode the response.
 
 ```go
 type Tweet struct {
@@ -49,7 +50,7 @@ type Tweet struct {
 
 ```go
 var tweets []Tweet
-resp, err := statusesSling.Request().Get("/show.json").Do(&tweets)
+resp, err := statuses.Request().Get("show.json").Do(&tweets)
 fmt.Println(tweets, resp, err)
 ```
 

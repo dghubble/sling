@@ -27,7 +27,7 @@ type IssueService struct {
 
 func NewIssueService(httpClient *http.Client) *IssueService {
 	return &IssueService{
-		sling: sling.New(httpClient).Base(baseUrl),
+		sling: sling.New().Client(httpClient).Base(baseUrl),
 	}
 }
 

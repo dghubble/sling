@@ -25,20 +25,18 @@ type Sling struct {
 	RawUrl string
 }
 
-// New returns a new Sling.
-func New(httpClient *http.Client) *Sling {
-	if httpClient == nil {
-		httpClient = http.DefaultClient
-	}
-	return &Sling{httpClient: httpClient}
+// New returns a new Sling with an http DefaultClient.
+func New() *Sling {
+	return &Sling{httpClient: http.DefaultClient}
 }
 
 // Copy Creation
 
-// Request returns a copy of the Sling, which is useful for creating a new,
+// Request returns a copy of the Sling. This is useful for creating a new,
 // mutable Sling with properties from a base Sling.
+//
 // For example,
-// baseSling := sling.New(nil).Base("https://api.io/")
+// baseSling := sling.New().Client(client).Base("https://api.io/")
 // fooSling := baseSling.Request().Get("foo/")
 // barSling := baseSling.Request().Get("bar/")
 //
@@ -53,6 +51,17 @@ func (s *Sling) Request() *Sling {
 }
 
 // Fluent setters
+
+// Client sets the httpClient used to do requests. If a nil client is given,
+// the http.DefaultClient will be used.
+func (s *Sling) Client(httpClient *http.Client) *Sling {
+	if httpClient == nil {
+		s.httpClient = http.DefaultClient
+	} else {
+		s.httpClient = httpClient
+	}
+	return s
+}
 
 // Base sets the RawUrl. If you intend to extend the url with Path,
 // baseUrl should be specified with a trailing slash.

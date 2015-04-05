@@ -10,19 +10,9 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	developerClient := &http.Client{}
-	cases := []struct {
-		input    *http.Client
-		expected *http.Client
-	}{
-		{nil, http.DefaultClient},
-		{developerClient, developerClient},
-	}
-	for _, c := range cases {
-		sling := New(c.input)
-		if sling.httpClient != c.expected {
-			t.Errorf("expected %v, got %v", c.expected, sling.httpClient)
-		}
+	sling := New()
+	if sling.httpClient != http.DefaultClient {
+		t.Errorf("expected %v, got %v", http.DefaultClient, sling.httpClient)
 	}
 }
 
@@ -46,11 +36,28 @@ func TestCopy(t *testing.T) {
 	}
 }
 
+func TestClientSetter(t *testing.T) {
+	developerClient := &http.Client{}
+	cases := []struct {
+		input    *http.Client
+		expected *http.Client
+	}{
+		{nil, http.DefaultClient},
+		{developerClient, developerClient},
+	}
+	for _, c := range cases {
+		sling := New()
+		sling.Client(c.input)
+		if sling.httpClient != c.expected {
+			t.Errorf("expected %v, got %v", c.expected, sling.httpClient)
+		}
+	}
+}
+
 func TestBaseSetter(t *testing.T) {
 	cases := []string{"http://a.io/", "http://b.io", "/path", "path", ""}
 	for _, base := range cases {
-		sling := New(nil)
-		sling.Base(base)
+		sling := New().Base(base)
 		if sling.RawUrl != base {
 			t.Errorf("expected %s, got %s", base, sling.RawUrl)
 		}
@@ -82,9 +89,7 @@ func TestPathSetter(t *testing.T) {
 		{"", "", ""},
 	}
 	for _, c := range cases {
-		sling := New(nil)
-		sling.Base(c.rawUrl)
-		sling.Path(c.path)
+		sling := New().Base(c.rawUrl).Path(c.path)
 		if sling.RawUrl != c.expectedRawUrl {
 			t.Errorf("expected %s, got %s", c.expectedRawUrl, sling.RawUrl)
 		}
@@ -96,12 +101,12 @@ func TestMethodSetters(t *testing.T) {
 		sling          *Sling
 		expectedMethod string
 	}{
-		{New(nil).Head("http://a.io"), HEAD},
-		{New(nil).Get("http://a.io"), GET},
-		{New(nil).Post("http://a.io"), POST},
-		{New(nil).Put("http://a.io"), PUT},
-		{New(nil).Patch("http://a.io"), PATCH},
-		{New(nil).Delete("http://a.io"), DELETE},
+		{New().Head("http://a.io"), HEAD},
+		{New().Get("http://a.io"), GET},
+		{New().Post("http://a.io"), POST},
+		{New().Put("http://a.io"), PUT},
+		{New().Patch("http://a.io"), PATCH},
+		{New().Delete("http://a.io"), DELETE},
 	}
 	for _, c := range cases {
 		if c.sling.Method != c.expectedMethod {
@@ -117,25 +122,25 @@ func TestHttpRequest_urlAndMethod(t *testing.T) {
 		expectedUrl    string
 		expectedErr    error
 	}{
-		{New(nil).Base("http://a.io"), "", "http://a.io", nil},
-		{New(nil).Path("http://a.io"), "", "http://a.io", nil},
-		{New(nil).Get("http://a.io"), GET, "http://a.io", nil},
-		{New(nil).Put("http://a.io"), PUT, "http://a.io", nil},
-		{New(nil).Base("http://a.io/").Path("foo"), "", "http://a.io/foo", nil},
-		{New(nil).Base("http://a.io/").Post("foo"), POST, "http://a.io/foo", nil},
+		{New().Base("http://a.io"), "", "http://a.io", nil},
+		{New().Path("http://a.io"), "", "http://a.io", nil},
+		{New().Get("http://a.io"), GET, "http://a.io", nil},
+		{New().Put("http://a.io"), PUT, "http://a.io", nil},
+		{New().Base("http://a.io/").Path("foo"), "", "http://a.io/foo", nil},
+		{New().Base("http://a.io/").Post("foo"), POST, "http://a.io/foo", nil},
 		// if relative path is an absolute url, base is ignored
-		{New(nil).Base("http://a.io").Path("http://b.io"), "", "http://b.io", nil},
-		{New(nil).Path("http://a.io").Path("http://b.io"), "", "http://b.io", nil},
+		{New().Base("http://a.io").Path("http://b.io"), "", "http://b.io", nil},
+		{New().Path("http://a.io").Path("http://b.io"), "", "http://b.io", nil},
 		// last method setter takes priority
-		{New(nil).Get("http://b.io").Post("http://a.io"), POST, "http://a.io", nil},
-		{New(nil).Post("http://a.io/").Put("foo/").Delete("bar"), DELETE, "http://a.io/foo/bar", nil},
+		{New().Get("http://b.io").Post("http://a.io"), POST, "http://a.io", nil},
+		{New().Post("http://a.io/").Put("foo/").Delete("bar"), DELETE, "http://a.io/foo/bar", nil},
 		// last Base setter takes priority
-		{New(nil).Base("http://a.io").Base("http://b.io"), "", "http://b.io", nil},
+		{New().Base("http://a.io").Base("http://b.io"), "", "http://b.io", nil},
 		// Path setters are additive
-		{New(nil).Base("http://a.io/").Path("foo/").Path("bar"), "", "http://a.io/foo/bar", nil},
-		{New(nil).Path("http://a.io/").Path("foo/").Path("bar"), "", "http://a.io/foo/bar", nil},
+		{New().Base("http://a.io/").Path("foo/").Path("bar"), "", "http://a.io/foo/bar", nil},
+		{New().Path("http://a.io/").Path("foo/").Path("bar"), "", "http://a.io/foo/bar", nil},
 		// removes extra '/' between base and ref url
-		{New(nil).Base("http://a.io/").Get("/foo"), GET, "http://a.io/foo", nil},
+		{New().Base("http://a.io/").Get("/foo"), GET, "http://a.io/foo", nil},
 	}
 	for _, c := range cases {
 		req, err := c.sling.HttpRequest()
@@ -178,7 +183,7 @@ func TestFire(t *testing.T) {
 	client, server := mockServer(`{"text": "Some text", "favorite_count": 24}`)
 	defer server.Close()
 
-	sling := New(client)
+	sling := New().Client(client)
 	req, _ := http.NewRequest("GET", server.URL, nil)
 	var model FakeModel
 	resp, err := sling.Fire(req, &model)
@@ -205,7 +210,7 @@ func TestFire_nilV(t *testing.T) {
 	client, server := mockServer("")
 	defer server.Close()
 
-	sling := New(client)
+	sling := New().Client(client)
 	req, _ := http.NewRequest("GET", server.URL, nil)
 	resp, err := sling.Fire(req, nil)
 
