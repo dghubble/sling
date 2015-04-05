@@ -6,10 +6,11 @@ import (
 	"net/http"
 )
 
-const baseUrl = "https://api.github.com"
+const baseUrl = "https://api.github.com/"
 
 // Define models
 
+// Simplified https://developer.github.com/v3/issues/#response
 type Issue struct {
 	Id     int    `json:"id"`
 	Url    string `json:"url"`
@@ -17,6 +18,16 @@ type Issue struct {
 	State  string `json:"state"`
 	Title  string `json:"title"`
 	Body   string `json:"body"`
+}
+
+// https://developer.github.com/v3/issues/#parameters
+type IssueParams struct {
+	Filter    string `url:"filter,omitempty"`
+	State     string `url:"state,omitempty"`
+	Labels    string `url:"labels,omitempty"`
+	Sort      string `url:"sort,omitempty"`
+	Direction string `url:"direction,omitempty"`
+	Since     string `url:"since,omitempty"`
 }
 
 // Implement services
@@ -31,10 +42,10 @@ func NewIssueService(httpClient *http.Client) *IssueService {
 	}
 }
 
-func (srvc IssueService) List(owner, repo string) ([]Issue, *http.Response, error) {
+func (srvc IssueService) List(owner, repo string, params *IssueParams) ([]Issue, *http.Response, error) {
 	var issues []Issue
-	path := fmt.Sprintf("/repos/%s/%s/issues", owner, repo)
-	resp, err := srvc.sling.Request().Get(path).Do(&issues)
+	path := fmt.Sprintf("repos/%s/%s/issues", owner, repo)
+	resp, err := srvc.sling.Request().Get(path).QueryStruct(params).Do(&issues)
 	return issues, resp, err
 }
 
@@ -52,11 +63,12 @@ func NewClient(httpClient *http.Client) *Client {
 	}
 }
 
-// example use of the tiny Github API above
+// example use of the tiny Github API
 
 func main() {
 	client := NewClient(&http.Client{})
-	issues, resp, err := client.IssueService.List("golang", "go")
+	params := &IssueParams{Sort: "updated"}
+	issues, resp, err := client.IssueService.List("golang", "go", params)
 	fmt.Printf("%#v\n", issues)
 	fmt.Println(resp, err)
 }

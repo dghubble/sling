@@ -9,8 +9,8 @@ Slings store http Request properties to simplify creating new Requests, sending 
 
 * Base/Path - path extend a Sling for different endpoints
 * Method Setters: Get/Post/Put/Patch/Delete/Head
-* Embeds your Http Client 
-* Receive to decode JSON success responses
+* Encode structs into URL query parameters
+* Receive decoded JSON success responses
 
 ## Install
 
@@ -20,12 +20,13 @@ Slings store http Request properties to simplify creating new Requests, sending 
 
 Read [GoDoc](https://godoc.org/github.com/dghubble/sling)
 
-## Intro
+## Usage
 
-Use a simple Sling to set request properties (`Path`, `QueryParams`, etc.) and create a new `http.Request` by calling `HttpRequest()`.
+Use a simple Sling to set request properties (`Path`, `QueryParams`, etc.) and then create a new `http.Request` by calling `HttpRequest()`.
 
 ```go
-req, err := sling.New().Client(client).Base("https://api.twitter.com/1.1/").HttpRequest()
+req, err := sling.New().Client(client).Base("https://api.github.com/")
+    .HttpRequest()
 client.Do(req)
 ```
 
@@ -38,29 +39,82 @@ statuses := base.Request().Path("statuses/")
 search := base.Request().Path("search/") 
 ```
 
-Avoid writing another client with encoding, decoding, and network logic. Define and tag your JSON models to use `Do(interface{})` to send a new Request and decode the response.
+Define url parameter structs and use `QueryStruct` to encode query parameters.
 
 ```go
-type Tweet struct {
-    ScreenName string `json:"screen_name"`
-    Text       string `json:"text"`
-    ...
+// Github Issue Parameters
+type IssueParams struct {
+    Filter    string `url:"filter,omitempty"`
+    State     string `url:"state,omitempty"`
+    Labels    string `url:"labels,omitempty"`
+    Sort      string `url:"sort,omitempty"`
+    Direction string `url:"direction,omitempty"`
+    Since     string `url:"since,omitempty"`
 }
 ```
 
 ```go
-var tweets []Tweet
-resp, err := statuses.Request().Get("show.json").Do(&tweets)
-fmt.Println(tweets, resp, err)
+githubBase := sling.New().Base("https://api.github.com/")
+
+params := {Sort: "updated"}
+path := fmt.Sprintf("repos/%s/%s/issues", owner, repo)
+req, err := githubBase.Request().Get(path).QueryStruct(params).HttpRequest()
 ```
 
-## Tutorial
+Define JSON models and use `Do(v interface{})` to send a new Request and decode the response Body.
+
+```go
+// Github Issue (abbreviated)
+type Issue struct {
+    Id     int    `json:"id"`
+    Url    string `json:"url"`
+    Number int    `json:"number"`
+    State  string `json:"state"`
+    Title  string `json:"title"`
+    Body   string `json:"body"`
+}
+```
+
+```go
+
+var issues []Issue
+path := fmt.Sprintf("repos/%s/%s/issues", owner, repo)
+req, err := githubBase.Request().Get(path).QueryStruct(params).Do(&issues)
+fmt.Println(issues, resp, err)
+```
+
+### Building an API
+
+A realistic API might define an endpoint (also called a service) for each type of resource. For example, here is a tiny Github IssueService which supports the [repository issues](https://developer.github.com/v3/issues/#list-issues-for-a-repository) route.
+
+```go
+type IssueService struct {
+    sling *sling.Sling
+}
+
+func NewIssueService(httpClient *http.Client) *IssueService {
+    return &IssueService{
+        sling: sling.New().Client(httpClient).Base(baseUrl),
+    }
+}
+
+func (srvc IssueService) List(owner, repo string, params *IssueParams) ([]Issue, *http.Response, error) {
+    var issues []Issue
+    path := fmt.Sprintf("repos/%s/%s/issues", owner, repo)
+    resp, err := srvc.sling.Request().Get(path).QueryStruct(params).Do(&issues)
+    return issues, resp, err
+}
+```
+
+## APIs using Sling
+
+None yet! Create a Pull Request to add a link to your own API.
 
 ## Motivation
 
-Sling was inspired by ideas from the [google/go-github](https://github.com/google/go-github) API.
+Many client libraries follow the lead of [google/go-github](https://github.com/google/go-github) (our inspiration!), but do so by reimplementing logic common to all clients.
 
-Sling picks ideas from a handful of good REST API clients in order to provide common primitives for building REST APIs. The hope is that authors of new API clients can use Sling instead of reimplementing logic common to all clients.
+Sling combines those good ideas to provide general primitives for building REST API clients.
 
 ## License
 

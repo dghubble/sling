@@ -2,6 +2,7 @@ package sling
 
 import (
 	"encoding/json"
+	goquery "github.com/google/go-querystring/query"
 	"net/http"
 	"net/url"
 )
@@ -23,11 +24,16 @@ type Sling struct {
 	Method string
 	// raw url string for requests
 	RawUrl string
+	// url tagged query structs
+	queryStructs []interface{}
 }
 
 // New returns a new Sling with an http DefaultClient.
 func New() *Sling {
-	return &Sling{httpClient: http.DefaultClient}
+	return &Sling{
+		httpClient:   http.DefaultClient,
+		queryStructs: make([]interface{}, 0),
+	}
 }
 
 // Copy Creation
@@ -44,9 +50,10 @@ func New() *Sling {
 // https://api.io/bar/ respectively and baseSling is unmodified.
 func (s *Sling) Request() *Sling {
 	return &Sling{
-		httpClient: s.httpClient,
-		Method:     s.Method,
-		RawUrl:     s.RawUrl,
+		httpClient:   s.httpClient,
+		Method:       s.Method,
+		RawUrl:       s.RawUrl,
+		queryStructs: append([]interface{}{}, s.queryStructs...),
 	}
 }
 
@@ -118,6 +125,17 @@ func (s *Sling) Delete(pathUrl string) *Sling {
 	return s.Path(pathUrl)
 }
 
+// QueryStruct adds the queryStruct to the slice of queryStructs which are
+// encoded as url query parameters when a request is created.
+// See https://godoc.org/github.com/google/go-querystring/query for url
+// tagging options.
+func (s *Sling) QueryStruct(queryStruct interface{}) *Sling {
+	if queryStruct != nil {
+		s.queryStructs = append(s.queryStructs, queryStruct)
+	}
+	return s
+}
+
 // Performing Requests
 
 // NewRequest returns a new http.Request created with the Sling properties.
@@ -126,11 +144,38 @@ func (s *Sling) HttpRequest() (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = addQueryStructs(reqURL, s.queryStructs)
+	if err != nil {
+		return nil, err
+	}
 	req, err := http.NewRequest(s.Method, reqURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
 	return req, err
+}
+
+// addQueryStructs parses url tagged query structs using go-querystring to
+// convert them to url.Values and encode them onto the url.RawQuery. Returns
+// any error that occurs during parsing.
+func addQueryStructs(reqURL *url.URL, queryStructs []interface{}) error {
+	urlValues, err := url.ParseQuery(reqURL.RawQuery)
+	if err != nil {
+		return err
+	}
+	for _, queryStruct := range queryStructs {
+		queryValues, err := goquery.Values(queryStruct)
+		if err != nil {
+			return err
+		}
+		for key, values := range queryValues {
+			for _, value := range values {
+				urlValues.Add(key, value)
+			}
+		}
+	}
+	reqURL.RawQuery = urlValues.Encode()
+	return nil
 }
 
 // Fire sends the HTTP request and decodes the response into the value pointed

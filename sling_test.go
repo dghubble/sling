@@ -14,6 +14,9 @@ func TestNew(t *testing.T) {
 	if sling.httpClient != http.DefaultClient {
 		t.Errorf("expected %v, got %v", http.DefaultClient, sling.httpClient)
 	}
+	if sling.queryStructs == nil {
+		t.Errorf("queryStructs not initialized with make")
+	}
 }
 
 // i.e Sling.Request()
@@ -21,6 +24,9 @@ func TestCopy(t *testing.T) {
 	cases := []*Sling{
 		&Sling{httpClient: &http.Client{}, Method: "GET", RawUrl: "http://example.com"},
 		&Sling{httpClient: nil, Method: "", RawUrl: "http://example.com"},
+		&Sling{queryStructs: make([]interface{}, 0)},
+		&Sling{queryStructs: []interface{}{paramsA}},
+		&Sling{queryStructs: []interface{}{paramsA, paramsB}},
 	}
 	for _, sling := range cases {
 		copy := sling.Request()
@@ -32,6 +38,13 @@ func TestCopy(t *testing.T) {
 		}
 		if copy.RawUrl != sling.RawUrl {
 			t.Errorf("expected %s, got %s", sling.RawUrl, copy.RawUrl)
+		}
+		if len(sling.queryStructs) > 0 {
+			// mutating the queryStructs must not mutate original
+			copy.queryStructs[0] = nil
+			if sling.queryStructs[0] == nil {
+				t.Errorf("copy's queryStructs is a re-slice, not a copy")
+			}
 		}
 	}
 }
@@ -115,6 +128,72 @@ func TestMethodSetters(t *testing.T) {
 	}
 }
 
+var paramsA = struct {
+	Limit int `url:"limit"`
+}{
+	30,
+}
+
+var paramsB = struct {
+	KindName string `url:"kind_name"`
+	Count    int    `url:"count"`
+}{
+	"recent",
+	25,
+}
+
+func TestQueryStructSetter(t *testing.T) {
+	cases := []struct {
+		sling           *Sling
+		expectedStructs []interface{}
+	}{
+		{New(), []interface{}{}},
+		{New().QueryStruct(nil), []interface{}{}},
+		{New().QueryStruct(paramsA), []interface{}{paramsA}},
+		{New().QueryStruct(paramsA).QueryStruct(paramsA), []interface{}{paramsA, paramsA}},
+		{New().QueryStruct(paramsA).QueryStruct(paramsB), []interface{}{paramsA, paramsB}},
+		{New().QueryStruct(paramsA).Request(), []interface{}{paramsA}},
+		{New().QueryStruct(paramsA).Request().QueryStruct(paramsB), []interface{}{paramsA, paramsB}},
+	}
+
+	for _, c := range cases {
+		if count := len(c.sling.queryStructs); count != len(c.expectedStructs) {
+			t.Errorf("expected length %d, got %d", len(c.expectedStructs), count)
+		}
+	check:
+		for _, expected := range c.expectedStructs {
+			for _, param := range c.sling.queryStructs {
+				if param == expected {
+					continue check
+				}
+			}
+			t.Errorf("expected to find %v in %v", expected, c.sling.queryStructs)
+		}
+	}
+}
+
+func TestAddQueryStructs(t *testing.T) {
+	cases := []struct {
+		rawurl       string
+		queryStructs []interface{}
+		expected     string
+	}{
+		{"http://a.io", []interface{}{}, "http://a.io"},
+		{"http://a.io", []interface{}{paramsA}, "http://a.io?limit=30"},
+		{"http://a.io", []interface{}{paramsA, paramsA}, "http://a.io?limit=30&limit=30"},
+		{"http://a.io", []interface{}{paramsA, paramsB}, "http://a.io?count=25&kind_name=recent&limit=30"},
+		// don't blow away query values on the RawUrl (parsed into RawQuery)
+		{"http://a.io?initial=7", []interface{}{paramsA}, "http://a.io?initial=7&limit=30"},
+	}
+	for _, c := range cases {
+		reqURL, _ := url.Parse(c.rawurl)
+		addQueryStructs(reqURL, c.queryStructs)
+		if reqURL.String() != c.expected {
+			t.Errorf("expected %s, got %s", c.expected, reqURL.String())
+		}
+	}
+}
+
 func TestHttpRequest_urlAndMethod(t *testing.T) {
 	cases := []struct {
 		sling          *Sling
@@ -152,6 +231,25 @@ func TestHttpRequest_urlAndMethod(t *testing.T) {
 		}
 		if req.Method != c.expectedMethod {
 			t.Errorf("expected method %s, got %s for %+v", c.expectedMethod, req.Method, c.sling)
+		}
+	}
+}
+
+func TestHttpRequest_queryStructs(t *testing.T) {
+	cases := []struct {
+		sling       *Sling
+		expectedUrl string
+	}{
+		{New().Base("http://a.io").QueryStruct(paramsA), "http://a.io?limit=30"},
+		{New().Base("http://a.io").QueryStruct(paramsA).QueryStruct(paramsB), "http://a.io?count=25&kind_name=recent&limit=30"},
+		{New().Base("http://a.io/").Path("foo?path=yes").QueryStruct(paramsA), "http://a.io/foo?limit=30&path=yes"},
+		{New().Base("http://a.io").QueryStruct(paramsA).Request(), "http://a.io?limit=30"},
+		{New().Base("http://a.io").QueryStruct(paramsA).Request().QueryStruct(paramsB), "http://a.io?count=25&kind_name=recent&limit=30"},
+	}
+	for _, c := range cases {
+		req, _ := c.sling.HttpRequest()
+		if req.URL.String() != c.expectedUrl {
+			t.Errorf("expected url %s, got %s for %+v", c.expectedUrl, req.URL.String(), c.sling)
 		}
 	}
 }
