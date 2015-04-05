@@ -178,12 +178,12 @@ func addQueryStructs(reqURL *url.URL, queryStructs []interface{}) error {
 	return nil
 }
 
-// Fire sends the HTTP request and decodes the response into the value pointed
+// Do sends the HTTP request and decodes the response into the value pointed
 // to by v. It wraps http.Client.Do, but handles closing the Response Body.
 // The Response and any error doing the request are returned.
 //
 // Note that non-2xx StatusCodes are valid responses, not errors.
-func (s *Sling) Fire(req *http.Request, v interface{}) (*http.Response, error) {
+func (s *Sling) Do(req *http.Request, v interface{}) (*http.Response, error) {
 	resp, err := s.HttpClient.Do(req)
 	if err != nil {
 		return resp, err
@@ -202,12 +202,12 @@ func decodeResponse(resp *http.Response, v interface{}) error {
 	return json.NewDecoder(resp.Body).Decode(v)
 }
 
-// Do creates a new HTTP request, sends it, and decodes the response into the
-// value pointed to by v. Do is shorthand for calling HttpRequest and Fire.
-func (s *Sling) Do(v interface{}) (*http.Response, error) {
+// Receive creates a new HTTP request, sends it, and decodes the response into
+// the value pointed to by v. Receive is shorthand for calling Request and Do.
+func (s *Sling) Receive(v interface{}) (*http.Response, error) {
 	req, err := s.HttpRequest()
 	if err != nil {
 		return nil, err
 	}
-	return s.Fire(req, v)
+	return s.Do(req, v)
 }

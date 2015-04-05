@@ -45,7 +45,7 @@ func NewIssueService(httpClient *http.Client) *IssueService {
 func (srvc IssueService) List(owner, repo string, params *IssueParams) ([]Issue, *http.Response, error) {
 	var issues []Issue
 	path := fmt.Sprintf("repos/%s/%s/issues", owner, repo)
-	resp, err := srvc.sling.Request().Get(path).QueryStruct(params).Do(&issues)
+	resp, err := srvc.sling.Request().Get(path).QueryStruct(params).Receive(&issues)
 	return issues, resp, err
 }
 

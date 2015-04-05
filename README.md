@@ -42,7 +42,7 @@ search := base.Request().Path("search/")
 
 ### Encode / Decode
 
-Define url parameter structs and use `QueryStruct` to encode query parameters.
+Define [url parameter structs](https://godoc.org/github.com/google/go-querystring/query) and use `QueryStruct` to encode query parameters.
 
 ```go
 // Github Issue Parameters
@@ -64,7 +64,7 @@ params := {Sort: "updated"}
 req, err := githubBase.Request().Get(path).QueryStruct(params).HttpRequest()
 ```
 
-Define expected value structs. Use `Do(v interface{})` to send a new Request and decode the response into the value.
+Define expected value structs. Use `Receive(v interface{})` to send a new Request and decode the response into the value.
 
 ```go
 // Github Issue (abbreviated)
@@ -81,7 +81,7 @@ type Issue struct {
 ```go
 
 var issues []Issue
-req, err := githubBase.Request().Get(path).QueryStruct(params).Do(&issues)
+req, err := githubBase.Request().Get(path).QueryStruct(params).Receive(&issues)
 fmt.Println(issues, resp, err)
 ```
 
@@ -103,7 +103,7 @@ func NewIssueService(httpClient *http.Client) *IssueService {
 func (srvc IssueService) List(owner, repo string, params *IssueParams) ([]Issue, *http.Response, error) {
     var issues []Issue
     path := fmt.Sprintf("repos/%s/%s/issues", owner, repo)
-    resp, err := srvc.sling.Request().Get(path).QueryStruct(params).Do(&issues)
+    resp, err := srvc.sling.Request().Get(path).QueryStruct(params).Receive(&issues)
     return issues, resp, err
 }
 ```

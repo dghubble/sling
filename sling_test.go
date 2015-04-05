@@ -275,7 +275,7 @@ type FakeModel struct {
 	FavoriteCount int64  `json:"favorite_count"`
 }
 
-func TestFire(t *testing.T) {
+func TestDo(t *testing.T) {
 	expectedText := "Some text"
 	var expectedFavoriteCount int64 = 24
 	client, server := mockServer(`{"text": "Some text", "favorite_count": 24}`)
@@ -284,7 +284,7 @@ func TestFire(t *testing.T) {
 	sling := New().Client(client)
 	req, _ := http.NewRequest("GET", server.URL, nil)
 	var model FakeModel
-	resp, err := sling.Fire(req, &model)
+	resp, err := sling.Do(req, &model)
 
 	if err != nil {
 		t.Errorf("expected nil, got %v", err)
@@ -304,13 +304,13 @@ func TestFire(t *testing.T) {
 	}
 }
 
-func TestFire_nilV(t *testing.T) {
+func TestDo_nilV(t *testing.T) {
 	client, server := mockServer("")
 	defer server.Close()
 
 	sling := New().Client(client)
 	req, _ := http.NewRequest("GET", server.URL, nil)
-	resp, err := sling.Fire(req, nil)
+	resp, err := sling.Do(req, nil)
 
 	if err != nil {
 		t.Errorf("expected nil, got %v", err)
