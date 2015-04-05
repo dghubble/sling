@@ -38,17 +38,17 @@ func New() *Sling {
 
 // Copy Creation
 
-// Request returns a copy of the Sling. This is useful for creating a new,
+// New returns a copy of the Sling. This is useful for creating a new,
 // mutable Sling with properties from a base Sling.
 //
 // For example,
 // baseSling := sling.New().Client(client).Base("https://api.io/")
-// fooSling := baseSling.Request().Get("foo/")
-// barSling := baseSling.Request().Get("bar/")
+// fooSling := baseSling.New().Get("foo/")
+// barSling := baseSling.New().Get("bar/")
 //
 // fooSling and barSling will send requests to https://api.io/foo/ and
 // https://api.io/bar/ respectively and baseSling is unmodified.
-func (s *Sling) Request() *Sling {
+func (s *Sling) New() *Sling {
 	return &Sling{
 		HttpClient:   s.HttpClient,
 		Method:       s.Method,
@@ -138,8 +138,8 @@ func (s *Sling) QueryStruct(queryStruct interface{}) *Sling {
 
 // Performing Requests
 
-// NewRequest returns a new http.Request created with the Sling properties.
-func (s *Sling) HttpRequest() (*http.Request, error) {
+// Request returns a new http.Request created with the Sling properties.
+func (s *Sling) Request() (*http.Request, error) {
 	reqURL, err := url.Parse(s.RawUrl)
 	if err != nil {
 		return nil, err
@@ -205,7 +205,7 @@ func decodeResponse(resp *http.Response, v interface{}) error {
 // Receive creates a new HTTP request, sends it, and decodes the response into
 // the value pointed to by v. Receive is shorthand for calling Request and Do.
 func (s *Sling) Receive(v interface{}) (*http.Response, error) {
-	req, err := s.HttpRequest()
+	req, err := s.Request()
 	if err != nil {
 		return nil, err
 	}

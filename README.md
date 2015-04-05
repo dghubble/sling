@@ -22,22 +22,22 @@ Read [GoDoc](https://godoc.org/github.com/dghubble/sling)
 
 ## Usage
 
-Use a simple Sling to set request properties (`Path`, `QueryParams`, etc.) and then create a new `http.Request` by calling `HttpRequest()`.
+Use a simple Sling to set request properties (`Path`, `QueryParams`, etc.) and then create a new `http.Request` by calling `Request()`.
 
 ```go
-req, err := sling.New().Get("https://example.com").HttpRequest()
+req, err := sling.New().Get("https://example.com").Request()
 client.Do(req)
 ```
 
-Slings are much more powerful though. Use them to create REST clients which wrap complex API endpoints. Copy a base Sling with `Request()` to avoid repeating common configuration.
+Slings are much more powerful though. Use them to create REST clients which wrap complex API endpoints. Copy a base Sling with `New()` to avoid repeating common configuration.
 
 ```go
 const twitterApi = "https://https://api.twitter.com/1.1/"
 base := sling.New().Base(twitterApi).Client(httpAuthClient)
 
-users := base.Request().Path("users/")
-statuses := base.Request().Path("statuses/")
-search := base.Request().Path("search/") 
+users := base.New().Path("users/")
+statuses := base.New().Path("statuses/")
+search := base.New().Path("search/") 
 ```
 
 ### Encode / Decode
@@ -61,7 +61,7 @@ githubBase := sling.New().Base("https://api.github.com/").Client(httpClient)
 path := fmt.Sprintf("repos/%s/%s/issues", owner, repo)
 
 params := {Sort: "updated"}
-req, err := githubBase.Request().Get(path).QueryStruct(params).HttpRequest()
+req, err := githubBase.New().Get(path).QueryStruct(params).Request()
 ```
 
 Define expected value structs. Use `Receive(v interface{})` to send a new Request and decode the response into the value.
@@ -81,7 +81,7 @@ type Issue struct {
 ```go
 
 var issues []Issue
-req, err := githubBase.Request().Get(path).QueryStruct(params).Receive(&issues)
+req, err := githubBase.New().Get(path).QueryStruct(params).Receive(&issues)
 fmt.Println(issues, resp, err)
 ```
 
@@ -103,7 +103,7 @@ func NewIssueService(httpClient *http.Client) *IssueService {
 func (srvc IssueService) List(owner, repo string, params *IssueParams) ([]Issue, *http.Response, error) {
     var issues []Issue
     path := fmt.Sprintf("repos/%s/%s/issues", owner, repo)
-    resp, err := srvc.sling.Request().Get(path).QueryStruct(params).Receive(&issues)
+    resp, err := srvc.sling.New().Get(path).QueryStruct(params).Receive(&issues)
     return issues, resp, err
 }
 ```

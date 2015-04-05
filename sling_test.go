@@ -19,8 +19,7 @@ func TestNew(t *testing.T) {
 	}
 }
 
-// i.e Sling.Request()
-func TestCopy(t *testing.T) {
+func TestSlingNew(t *testing.T) {
 	cases := []*Sling{
 		&Sling{HttpClient: &http.Client{}, Method: "GET", RawUrl: "http://example.com"},
 		&Sling{HttpClient: nil, Method: "", RawUrl: "http://example.com"},
@@ -29,7 +28,7 @@ func TestCopy(t *testing.T) {
 		&Sling{queryStructs: []interface{}{paramsA, paramsB}},
 	}
 	for _, sling := range cases {
-		copy := sling.Request()
+		copy := sling.New()
 		if copy.HttpClient != sling.HttpClient {
 			t.Errorf("expected %p, got %p", sling.HttpClient, copy.HttpClient)
 		}
@@ -152,8 +151,8 @@ func TestQueryStructSetter(t *testing.T) {
 		{New().QueryStruct(paramsA), []interface{}{paramsA}},
 		{New().QueryStruct(paramsA).QueryStruct(paramsA), []interface{}{paramsA, paramsA}},
 		{New().QueryStruct(paramsA).QueryStruct(paramsB), []interface{}{paramsA, paramsB}},
-		{New().QueryStruct(paramsA).Request(), []interface{}{paramsA}},
-		{New().QueryStruct(paramsA).Request().QueryStruct(paramsB), []interface{}{paramsA, paramsB}},
+		{New().QueryStruct(paramsA).New(), []interface{}{paramsA}},
+		{New().QueryStruct(paramsA).New().QueryStruct(paramsB), []interface{}{paramsA, paramsB}},
 	}
 
 	for _, c := range cases {
@@ -194,7 +193,7 @@ func TestAddQueryStructs(t *testing.T) {
 	}
 }
 
-func TestHttpRequest_urlAndMethod(t *testing.T) {
+func TestRequest_urlAndMethod(t *testing.T) {
 	cases := []struct {
 		sling          *Sling
 		expectedMethod string
@@ -222,7 +221,7 @@ func TestHttpRequest_urlAndMethod(t *testing.T) {
 		{New().Base("http://a.io/").Get("/foo"), GET, "http://a.io/foo", nil},
 	}
 	for _, c := range cases {
-		req, err := c.sling.HttpRequest()
+		req, err := c.sling.Request()
 		if err != c.expectedErr {
 			t.Errorf("expected error %v, got %v for %+v", c.expectedErr, err, c.sling)
 		}
@@ -235,7 +234,7 @@ func TestHttpRequest_urlAndMethod(t *testing.T) {
 	}
 }
 
-func TestHttpRequest_queryStructs(t *testing.T) {
+func TestRequest_queryStructs(t *testing.T) {
 	cases := []struct {
 		sling       *Sling
 		expectedUrl string
@@ -243,11 +242,11 @@ func TestHttpRequest_queryStructs(t *testing.T) {
 		{New().Base("http://a.io").QueryStruct(paramsA), "http://a.io?limit=30"},
 		{New().Base("http://a.io").QueryStruct(paramsA).QueryStruct(paramsB), "http://a.io?count=25&kind_name=recent&limit=30"},
 		{New().Base("http://a.io/").Path("foo?path=yes").QueryStruct(paramsA), "http://a.io/foo?limit=30&path=yes"},
-		{New().Base("http://a.io").QueryStruct(paramsA).Request(), "http://a.io?limit=30"},
-		{New().Base("http://a.io").QueryStruct(paramsA).Request().QueryStruct(paramsB), "http://a.io?count=25&kind_name=recent&limit=30"},
+		{New().Base("http://a.io").QueryStruct(paramsA).New(), "http://a.io?limit=30"},
+		{New().Base("http://a.io").QueryStruct(paramsA).New().QueryStruct(paramsB), "http://a.io?count=25&kind_name=recent&limit=30"},
 	}
 	for _, c := range cases {
-		req, _ := c.sling.HttpRequest()
+		req, _ := c.sling.Request()
 		if req.URL.String() != c.expectedUrl {
 			t.Errorf("expected url %s, got %s for %+v", c.expectedUrl, req.URL.String(), c.sling)
 		}
