@@ -1,11 +1,12 @@
 
 # Sling [![Build Status](https://travis-ci.org/dghubble/sling.png)](https://travis-ci.org/dghubble/sling) [![GoDoc](http://godoc.org/github.com/dghubble/sling?status.png)](http://godoc.org/github.com/dghubble/sling)
+<img align="right" src="https://s3.amazonaws.com/dghubble/small-gopher-with-sling.png">
 
 Sling is a Go REST client library for creating and sending requests. 
 
 Slings store http Request properties to simplify creating new Requests, sending them, and decoding responses. See the tutorial to learn how to compose a Sling into your API client.
 
-## Features
+### Features
 
 * Base/Path - path extend a Sling for different endpoints
 * Method Setters: Get/Post/Put/Patch/Delete/Head
@@ -40,7 +41,7 @@ statuses := base.New().Path("statuses/")
 search := base.New().Path("search/") 
 ```
 
-### Encode / Decode
+### Encode
 
 Define [url parameter structs](https://godoc.org/github.com/google/go-querystring/query) and use `QueryStruct` to encode query parameters.
 
@@ -64,6 +65,8 @@ params := {Sort: "updated"}
 req, err := githubBase.New().Get(path).QueryStruct(params).Request()
 ```
 
+### Decode
+
 Define expected value structs. Use `Receive(v interface{})` to send a new Request and decode the response into the value.
 
 ```go
@@ -79,7 +82,6 @@ type Issue struct {
 ```
 
 ```go
-
 var issues []Issue
 req, err := githubBase.New().Get(path).QueryStruct(params).Receive(&issues)
 fmt.Println(issues, resp, err)
