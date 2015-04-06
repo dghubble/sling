@@ -39,12 +39,11 @@ func New() *Sling {
 // Copy Creation
 
 // New returns a copy of the Sling. This is useful for creating a new,
-// mutable Sling with properties from a base Sling.
+// mutable Sling with properties from a base Sling. For example,
 //
-// For example,
-// baseSling := sling.New().Client(client).Base("https://api.io/")
-// fooSling := baseSling.New().Get("foo/")
-// barSling := baseSling.New().Get("bar/")
+// 	baseSling := sling.New().Client(client).Base("https://api.io/")
+// 	fooSling := baseSling.New().Get("foo/")
+// 	barSling := baseSling.New().Get("bar/")
 //
 // fooSling and barSling will send requests to https://api.io/foo/ and
 // https://api.io/bar/ respectively and baseSling is unmodified.
