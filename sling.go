@@ -1,8 +1,10 @@
 package sling
 
 import (
+	"bytes"
 	"encoding/json"
 	goquery "github.com/google/go-querystring/query"
+	"io"
 	"net/http"
 	"net/url"
 )
@@ -26,6 +28,8 @@ type Sling struct {
 	RawUrl string
 	// url tagged query structs
 	queryStructs []interface{}
+	// json tagged body struct
+	jsonBody interface{}
 }
 
 // New returns a new Sling with an http DefaultClient.
@@ -35,8 +39,6 @@ func New() *Sling {
 		queryStructs: make([]interface{}, 0),
 	}
 }
-
-// Copy Creation
 
 // New returns a copy of the Sling. This is useful for creating a new,
 // mutable Sling with properties from a base Sling. For example,
@@ -56,7 +58,7 @@ func (s *Sling) New() *Sling {
 	}
 }
 
-// Fluent setters
+// Http Client
 
 // Client sets the http Client used to do requests. If a nil client is given,
 // the http.DefaultClient will be used.
@@ -69,24 +71,7 @@ func (s *Sling) Client(httpClient *http.Client) *Sling {
 	return s
 }
 
-// Base sets the RawUrl. If you intend to extend the url with Path,
-// baseUrl should be specified with a trailing slash.
-func (s *Sling) Base(rawurl string) *Sling {
-	s.RawUrl = rawurl
-	return s
-}
-
-// Path extends the RawUrl with the given path by resolving the reference to
-// an absolute URL. If parsing errors occur, the RawUrl is left unmodified.
-func (s *Sling) Path(path string) *Sling {
-	baseURL, baseErr := url.Parse(s.RawUrl)
-	pathURL, pathErr := url.Parse(path)
-	if baseErr == nil && pathErr == nil {
-		s.RawUrl = baseURL.ResolveReference(pathURL).String()
-		return s
-	}
-	return s
-}
+// Method
 
 // Head sets the Sling method to HEAD and sets the given pathUrl.
 func (s *Sling) Head(pathUrl string) *Sling {
@@ -124,10 +109,32 @@ func (s *Sling) Delete(pathUrl string) *Sling {
 	return s.Path(pathUrl)
 }
 
-// QueryStruct adds the queryStruct to the slice of queryStructs which are
-// encoded as url query parameters when a request is created.
-// See https://godoc.org/github.com/google/go-querystring/query for url
-// tagging options.
+// Url
+
+// Base sets the RawUrl. If you intend to extend the url with Path,
+// baseUrl should be specified with a trailing slash.
+func (s *Sling) Base(rawurl string) *Sling {
+	s.RawUrl = rawurl
+	return s
+}
+
+// Path extends the RawUrl with the given path by resolving the reference to
+// an absolute URL. If parsing errors occur, the RawUrl is left unmodified.
+func (s *Sling) Path(path string) *Sling {
+	baseURL, baseErr := url.Parse(s.RawUrl)
+	pathURL, pathErr := url.Parse(path)
+	if baseErr == nil && pathErr == nil {
+		s.RawUrl = baseURL.ResolveReference(pathURL).String()
+		return s
+	}
+	return s
+}
+
+// QueryStruct appends the queryStruct to the Sling's queryStructs. The value
+// pointed to by each queryStruct will be encoded as url query parameters on
+// new requests (see Request()).
+// The queryStruct argument should be a pointer to a url tagged struct. See
+// https://godoc.org/github.com/google/go-querystring/query for details.
 func (s *Sling) QueryStruct(queryStruct interface{}) *Sling {
 	if queryStruct != nil {
 		s.queryStructs = append(s.queryStructs, queryStruct)
@@ -135,9 +142,24 @@ func (s *Sling) QueryStruct(queryStruct interface{}) *Sling {
 	return s
 }
 
-// Performing Requests
+// Body
+
+// JsonBody sets the Sling's jsonBody. The value pointed to by the jsonBody
+// will be JSON encoded to set the Body on new requests (see Request()).
+// The jsonBody argument should be a pointer to a json tagged struct. See
+// https://golang.org/pkg/encoding/json/#MarshalIndent for details.
+func (s *Sling) JsonBody(jsonBody interface{}) *Sling {
+	if jsonBody != nil {
+		s.jsonBody = jsonBody
+	}
+	return s
+}
+
+// Requests
 
 // Request returns a new http.Request created with the Sling properties.
+// Returns any errors parsing the RawUrl, encoding query structs, encoding
+// the body, or creating the http.Request.
 func (s *Sling) Request() (*http.Request, error) {
 	reqURL, err := url.Parse(s.RawUrl)
 	if err != nil {
@@ -147,7 +169,14 @@ func (s *Sling) Request() (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest(s.Method, reqURL.String(), nil)
+	var body io.Reader
+	if s.jsonBody != nil {
+		body, err = encodeJsonBody(s.jsonBody)
+		if err != nil {
+			return nil, err
+		}
+	}
+	req, err := http.NewRequest(s.Method, reqURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -155,13 +184,14 @@ func (s *Sling) Request() (*http.Request, error) {
 }
 
 // addQueryStructs parses url tagged query structs using go-querystring to
-// convert them to url.Values and encode them onto the url.RawQuery. Returns
-// any error that occurs during parsing.
+// encode them to url.Values and format them onto the url.RawQuery. Any
+// query parsing or encoding errors are returned.
 func addQueryStructs(reqURL *url.URL, queryStructs []interface{}) error {
 	urlValues, err := url.ParseQuery(reqURL.RawQuery)
 	if err != nil {
 		return err
 	}
+	// encodes query structs into a url.Values map and merges maps
 	for _, queryStruct := range queryStructs {
 		queryValues, err := goquery.Values(queryStruct)
 		if err != nil {
@@ -173,8 +203,35 @@ func addQueryStructs(reqURL *url.URL, queryStructs []interface{}) error {
 			}
 		}
 	}
+	// url.Values format to a sorted "url encoded" string, e.g. "key=val&foo=bar"
 	reqURL.RawQuery = urlValues.Encode()
 	return nil
+}
+
+// encodeJsonBody JSON encodes the value pointed to by jsonBody into an
+// io.Reader, typically for use as a Request Body.
+func encodeJsonBody(jsonBody interface{}) (io.Reader, error) {
+	var buf = new(bytes.Buffer)
+	if jsonBody != nil {
+		buf = &bytes.Buffer{}
+		err := json.NewEncoder(buf).Encode(jsonBody)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return buf, nil
+}
+
+// Sending
+
+// Receive creates a new HTTP request, sends it, and decodes the response into
+// the value pointed to by v. Receive is shorthand for calling Request and Do.
+func (s *Sling) Receive(v interface{}) (*http.Response, error) {
+	req, err := s.Request()
+	if err != nil {
+		return nil, err
+	}
+	return s.Do(req, v)
 }
 
 // Do sends the HTTP request and decodes the response into the value pointed
@@ -199,14 +256,4 @@ func (s *Sling) Do(req *http.Request, v interface{}) (*http.Response, error) {
 // to by v. Caller must provide non-nil v and close resp.Body once complete.
 func decodeResponse(resp *http.Response, v interface{}) error {
 	return json.NewDecoder(resp.Body).Decode(v)
-}
-
-// Receive creates a new HTTP request, sends it, and decodes the response into
-// the value pointed to by v. Receive is shorthand for calling Request and Do.
-func (s *Sling) Receive(v interface{}) (*http.Response, error) {
-	req, err := s.Request()
-	if err != nil {
-		return nil, err
-	}
-	return s.Do(req, v)
 }

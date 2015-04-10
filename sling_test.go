@@ -1,8 +1,11 @@
 package sling
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -171,24 +174,29 @@ func TestQueryStructSetter(t *testing.T) {
 	}
 }
 
-func TestAddQueryStructs(t *testing.T) {
+// Example JSON-tagged struct
+type FakeModel struct {
+	Text          string  `json:"text,omitempty"`
+	FavoriteCount int64   `json:"favorite_count,omitempty"`
+	Temperature   float64 `json:"temperature,omitempty"`
+}
+
+func TestJsonBodySetter(t *testing.T) {
+	fakeModel := &FakeModel{}
 	cases := []struct {
-		rawurl       string
-		queryStructs []interface{}
-		expected     string
+		initial  interface{}
+		input    interface{}
+		expected interface{}
 	}{
-		{"http://a.io", []interface{}{}, "http://a.io"},
-		{"http://a.io", []interface{}{paramsA}, "http://a.io?limit=30"},
-		{"http://a.io", []interface{}{paramsA, paramsA}, "http://a.io?limit=30&limit=30"},
-		{"http://a.io", []interface{}{paramsA, paramsB}, "http://a.io?count=25&kind_name=recent&limit=30"},
-		// don't blow away query values on the RawUrl (parsed into RawQuery)
-		{"http://a.io?initial=7", []interface{}{paramsA}, "http://a.io?initial=7&limit=30"},
+		{fakeModel, nil, fakeModel},
+		{nil, fakeModel, fakeModel},
 	}
 	for _, c := range cases {
-		reqURL, _ := url.Parse(c.rawurl)
-		addQueryStructs(reqURL, c.queryStructs)
-		if reqURL.String() != c.expected {
-			t.Errorf("expected %s, got %s", c.expected, reqURL.String())
+		sling := New()
+		sling.jsonBody = c.initial
+		sling.JsonBody(c.input)
+		if sling.jsonBody != c.expected {
+			t.Errorf("expected %v, got %v", c.expected, sling.jsonBody)
 		}
 	}
 }
@@ -253,31 +261,118 @@ func TestRequest_queryStructs(t *testing.T) {
 	}
 }
 
-// mockServer returns an httptest.Server which always returns the given body.
-// The caller must close the test server.
-func mockServer(body string) (*http.Client, *httptest.Server) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintln(w, body)
-	}))
-	transport := &http.Transport{
-		Proxy: func(req *http.Request) (*url.URL, error) {
-			return url.Parse(server.URL)
-		},
+func TestRequest_jsonBody(t *testing.T) {
+	cases := []struct {
+		sling        *Sling
+		expectedBody string // expected Body io.Reader as a string
+	}{
+		{New().JsonBody(&FakeModel{Text: "note", FavoriteCount: 12}), "{\"text\":\"note\",\"favorite_count\":12}\n"},
+		{New().JsonBody(FakeModel{Text: "note", FavoriteCount: 12}), "{\"text\":\"note\",\"favorite_count\":12}\n"},
+		{New().JsonBody(&FakeModel{}), "{}\n"},
+		{New().JsonBody(FakeModel{}), "{}\n"},
+		// setting the jsonBody overrides existing jsonBody
+		{New().JsonBody(&FakeModel{}).JsonBody(&FakeModel{Text: "msg"}), "{\"text\":\"msg\"}\n"},
 	}
-	client := &http.Client{Transport: transport}
-	return client, server
+	for _, c := range cases {
+		req, _ := c.sling.Request()
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(req.Body)
+		if value := buf.String(); value != c.expectedBody {
+			t.Errorf("expected Request.Body %s, got %s", c.expectedBody, value)
+		}
+	}
+
+	// test that Body is left nil when no JSON struct is set via JsonBody
+	slings := []*Sling{
+		New().JsonBody(nil),
+		New(),
+	}
+	for _, sling := range slings {
+		req, _ := sling.Request()
+		if req.Body != nil {
+			t.Errorf("expected nil Request.Body, got %v", req.Body)
+		}
+	}
+
+	// test that expected jsonBody encoding errors occur, use illegal JSON field
+	sling := New().JsonBody(&FakeModel{Temperature: math.Inf(1)})
+	req, err := sling.Request()
+	expectedErr := errors.New("json: unsupported value: +Inf")
+	if err == nil || err.Error() != expectedErr.Error() {
+		t.Errorf("expected error %v, got %v", expectedErr, err)
+	}
+	if req != nil {
+		t.Errorf("expected nil Request, got %v", req)
+	}
 }
 
-type FakeModel struct {
-	Text          string `json:"text"`
-	FavoriteCount int64  `json:"favorite_count"`
+func TestAddQueryStructs(t *testing.T) {
+	cases := []struct {
+		rawurl       string
+		queryStructs []interface{}
+		expected     string
+	}{
+		{"http://a.io", []interface{}{}, "http://a.io"},
+		{"http://a.io", []interface{}{paramsA}, "http://a.io?limit=30"},
+		{"http://a.io", []interface{}{paramsA, paramsA}, "http://a.io?limit=30&limit=30"},
+		{"http://a.io", []interface{}{paramsA, paramsB}, "http://a.io?count=25&kind_name=recent&limit=30"},
+		// don't blow away query values on the RawUrl (parsed into RawQuery)
+		{"http://a.io?initial=7", []interface{}{paramsA}, "http://a.io?initial=7&limit=30"},
+	}
+	for _, c := range cases {
+		reqURL, _ := url.Parse(c.rawurl)
+		addQueryStructs(reqURL, c.queryStructs)
+		if reqURL.String() != c.expected {
+			t.Errorf("expected %s, got %s", c.expected, reqURL.String())
+		}
+	}
+}
+
+func TestEncodeJsonBody(t *testing.T) {
+	cases := []struct {
+		jsonStruct     interface{}
+		expectedReader string // expected io.Reader as a string
+		expectedErr    error
+	}{
+		{&FakeModel{Text: "note", FavoriteCount: 12}, "{\"text\":\"note\",\"favorite_count\":12}\n", nil},
+		{FakeModel{Text: "note", FavoriteCount: 12}, "{\"text\":\"note\",\"favorite_count\":12}\n", nil},
+		// nil argument should return an empty reader
+		{nil, "", nil},
+		// zero valued json-tagged should return empty object JSON {}
+		{&FakeModel{}, "{}\n", nil},
+		{FakeModel{}, "{}\n", nil},
+		// check that Encode errors are propagated, illegal JSON field
+		{FakeModel{Temperature: math.Inf(1)}, "", errors.New("json: unsupported value: +Inf")},
+	}
+	for _, c := range cases {
+		reader, err := encodeJsonBody(c.jsonStruct)
+		if c.expectedErr == nil {
+			// err expected to be nil, io.Reader should be readable
+			if err != nil {
+				t.Errorf("expected error %v, got %v", nil, err)
+			}
+			buf := new(bytes.Buffer)
+			buf.ReadFrom(reader)
+			if value := buf.String(); value != c.expectedReader {
+				fmt.Println(len(value))
+				t.Errorf("expected jsonBody string \"%s\", got \"%s\"", c.expectedReader, value)
+			}
+		} else {
+			// err is non-nil, io.Reader is not readable
+			if err.Error() != c.expectedErr.Error() {
+				t.Errorf("expected error %s, got %s", c.expectedErr.Error(), err.Error())
+			}
+			if reader != nil {
+				t.Errorf("expected jsonBody nil, got %v", reader)
+			}
+		}
+	}
 }
 
 func TestDo(t *testing.T) {
 	expectedText := "Some text"
 	var expectedFavoriteCount int64 = 24
-	client, server := mockServer(`{"text": "Some text", "favorite_count": 24}`)
+	client, server := mockServer(`{"text":"Some text","favorite_count":24}`)
 	defer server.Close()
 
 	sling := New().Client(client)
@@ -321,4 +416,23 @@ func TestDo_nilV(t *testing.T) {
 	if _, err = ioutil.ReadAll(resp.Body); err == nil || err.Error() != expectedReadError {
 		t.Errorf("expected %s, got %v", expectedReadError, err)
 	}
+}
+
+// Testing Utils
+
+// mockServer returns an httptest.Server which always returns Responses with
+// the given string as the Body with Content-Type application/json.
+// The caller must close the test server.
+func mockServer(body string) (*http.Client, *httptest.Server) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintln(w, body)
+	}))
+	transport := &http.Transport{
+		Proxy: func(req *http.Request) (*url.URL, error) {
+			return url.Parse(server.URL)
+		},
+	}
+	client := &http.Client{Transport: transport}
+	return client, server
 }
