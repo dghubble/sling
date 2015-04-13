@@ -52,10 +52,10 @@ func NewIssueService(httpClient *http.Client) *IssueService {
 }
 
 func (s IssueService) List(owner, repo string, params *IssueParams) ([]Issue, *http.Response, error) {
-	var issues []Issue
+	issues := new([]Issue)
 	path := fmt.Sprintf("repos/%s/%s/issues", owner, repo)
-	resp, err := s.sling.New().Get(path).QueryStruct(params).Receive(&issues)
-	return issues, resp, err
+	resp, err := s.sling.New().Get(path).QueryStruct(params).Receive(issues)
+	return *issues, resp, err
 }
 
 func (s *IssueService) Create(owner, repo string, issueBody *IssueRequest) (*Issue, *http.Response, error) {

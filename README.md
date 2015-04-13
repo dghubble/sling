@@ -11,6 +11,7 @@ Slings store http Request properties to simplify creating new Requests, sending 
 * Base/Path - path extend a Sling for different endpoints
 * Method Setters: Get/Post/Put/Patch/Delete/Head
 * Encode structs into URL query parameters
+* Encode JSON into the Request Body
 * Receive decoded JSON success responses
 
 ## Install
@@ -41,7 +42,7 @@ statuses := base.New().Path("statuses/")
 search := base.New().Path("search/") 
 ```
 
-### Encode
+### QueryStruct
 
 Define [url parameter structs](https://godoc.org/github.com/google/go-querystring/query) and use `QueryStruct` to encode query parameters.
 
@@ -65,9 +66,34 @@ params := {Sort: "updated"}
 req, err := githubBase.New().Get(path).QueryStruct(params).Request()
 ```
 
-### Decode
+### JsonBody
 
-Define expected value structs. Use `Receive(v interface{})` to send a new Request and decode the response into the value.
+Setup a Sling which will include JSON in the Body of its Requests using `JsonBody`.
+
+```go
+type IssueRequest struct {
+    Title     string   `json:"title,omitempty"`
+    Body      string   `json:"body,omitempty"`
+    Assignee  string   `json:"assignee,omitempty"`
+    Milestone int      `json:"milestone,omitempty"`
+    Labels    []string `json:"labels,omitempty"`
+}
+```
+
+```go
+githubBase := sling.New().Base("https://api.github.com/").Client(httpClient)
+path := fmt.Sprintf("repos/%s/%s/issues", owner, repo)
+
+body := &IssueRequest{
+    Title: "Test title",
+    Body:  "Some issue",
+}
+req, err := githubBase.New().Post(path).JsonBody(body).Request()
+```
+
+### Receive
+
+Define expected value structs. Use `Receive(v interface{})` to send a new Request that will automatically decode the response into the value.
 
 ```go
 // Github Issue (abbreviated)
@@ -82,8 +108,8 @@ type Issue struct {
 ```
 
 ```go
-var issues []Issue
-req, err := githubBase.New().Get(path).QueryStruct(params).Receive(&issues)
+issues := new([]Issue)
+resp, err := githubBase.New().Get(path).QueryStruct(params).Receive(issues)
 fmt.Println(issues, resp, err)
 ```
 
@@ -106,13 +132,28 @@ func (srvc IssueService) List(owner, repo string, params *IssueParams) ([]Issue,
     var issues []Issue
     path := fmt.Sprintf("repos/%s/%s/issues", owner, repo)
     resp, err := srvc.sling.New().Get(path).QueryStruct(params).Receive(&issues)
-    return issues, resp, err
+    return *issues, resp, err
+}
+
+func (s *IssueService) Create(owner, repo string, issueBody *IssueRequest) (*Issue, *http.Response, error) {
+    issue := new(Issue)
+    path := fmt.Sprintf("repos/%s/%s/issues", owner, repo)
+    resp, err := s.sling.New().Post(path).JsonBody(issueBody).Receive(issue)
+    return issue, resp, err
 }
 ```
 
 ## APIs using Sling
 
-None yet! Create a Pull Request to add a link to your own API.
+Create a Pull Request to add a link to your own API.
+
+* [dghubble/go-twitter](https://github.com/dghubble/go-twitter)
+
+## Roadmap
+
+* `formBody`
+* Set Headers
+* Receive custom error structs
 
 ## Motivation
 
