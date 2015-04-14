@@ -4,7 +4,7 @@
 
 Sling is a Go REST client library for creating and sending requests. 
 
-Slings store http Request properties to simplify creating new Requests, sending them, and decoding responses. See the tutorial to learn how to compose a Sling into your API client.
+Slings store http Request properties to simplify sending requests and decoding responses. Check [Usage](#Usage) or the [examples](examples) to learn how to compose a Sling into your API client.
 
 ### Features
 
@@ -39,7 +39,12 @@ base := sling.New().Base(twitterApi).Client(httpAuthClient)
 
 users := base.New().Path("users/")
 statuses := base.New().Path("statuses/")
-search := base.New().Path("search/") 
+```
+
+Specify the path with an http Method. Continue reading to see how you can set typed query parameters, set typed body data, and decode the typed response.
+
+```go
+statuses.New().Get("show.json").QueryStruct(params).Receive(&tweet)
 ```
 
 ### QueryStruct
@@ -62,7 +67,7 @@ type IssueParams struct {
 githubBase := sling.New().Base("https://api.github.com/").Client(httpClient)
 path := fmt.Sprintf("repos/%s/%s/issues", owner, repo)
 
-params := {Sort: "updated"}
+params := {Sort: "updated", State: "open"}
 req, err := githubBase.New().Get(path).QueryStruct(params).Request()
 ```
 
