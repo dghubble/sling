@@ -4,12 +4,13 @@
 
 Sling is a Go REST client library for creating and sending requests. 
 
-Slings store http Request properties to simplify sending requests and decoding responses. Check [Usage](#usage) or the [examples](examples) to learn how to compose a Sling into your API client.
+Slings store http Request properties to simplify sending requests and decoding responses. Check [usage](#usage) or the [examples](examples) to learn how to compose a Sling into your API client.
 
 ### Features
 
 * Base/Path - path extend a Sling for different endpoints
 * Method Setters: Get/Post/Put/Patch/Delete/Head
+* Add and Set Request Headers
 * Encode structs into URL query parameters
 * Encode JSON into the Request Body
 * Receive decoded JSON success responses
@@ -41,10 +42,10 @@ users := base.New().Path("users/")
 statuses := base.New().Path("statuses/")
 ```
 
-Specify the path with an http Method. Continue reading to see how you can set typed query parameters, set typed body data, and decode the typed response.
+Choose an http Method and extend the path. Continue reading to see how you can set typed query parameters, set typed body data, and decode the typed response.
 
 ```go
-statuses.New().Get("show.json").QueryStruct(params).Receive(&tweet)
+statuses.New().Get("show.json").QueryStruct(params).Receive(tweet)
 ```
 
 ### QueryStruct
@@ -71,9 +72,18 @@ params := {Sort: "updated", State: "open"}
 req, err := githubBase.New().Get(path).QueryStruct(params).Request()
 ```
 
+### Headers
+
+`Add` or `Set` headers which should be applied to all Requests created by a Sling.
+
+```go
+base := sling.New().Base(baseUrl).Set("User-Agent", "Gophergram API Client")
+req, err := base.New().Get("gophergram/list").Request()
+```
+
 ### JsonBody
 
-Setup a Sling which will include JSON in the Body of its Requests using `JsonBody`.
+Make a Sling include JSON in the Body of its Requests using `JsonBody`.
 
 ```go
 type IssueRequest struct {
@@ -95,6 +105,8 @@ body := &IssueRequest{
 }
 req, err := githubBase.New().Post(path).JsonBody(body).Request()
 ```
+
+The Sling will include an `application/json` Content-Type header its requests.
 
 ### Receive
 
@@ -157,7 +169,6 @@ Create a Pull Request to add a link to your own API.
 ## Roadmap
 
 * `formBody`
-* Set Headers
 * Receive custom error structs
 
 ## Motivation
