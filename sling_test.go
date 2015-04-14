@@ -12,6 +12,27 @@ import (
 	"testing"
 )
 
+// Url-tagged query struct
+var paramsA = struct {
+	Limit int `url:"limit"`
+}{
+	30,
+}
+var paramsB = struct {
+	KindName string `url:"kind_name"`
+	Count    int    `url:"count"`
+}{
+	"recent",
+	25,
+}
+
+// Json-tagged model struct
+type FakeModel struct {
+	Text          string  `json:"text,omitempty"`
+	FavoriteCount int64   `json:"favorite_count,omitempty"`
+	Temperature   float64 `json:"temperature,omitempty"`
+}
+
 func TestNew(t *testing.T) {
 	sling := New()
 	if sling.HttpClient != http.DefaultClient {
@@ -29,6 +50,9 @@ func TestSlingNew(t *testing.T) {
 		&Sling{queryStructs: make([]interface{}, 0)},
 		&Sling{queryStructs: []interface{}{paramsA}},
 		&Sling{queryStructs: []interface{}{paramsA, paramsB}},
+		&Sling{jsonBody: &FakeModel{Text: "a"}},
+		&Sling{jsonBody: FakeModel{Text: "a"}},
+		&Sling{jsonBody: nil},
 	}
 	for _, sling := range cases {
 		copy := sling.New()
@@ -41,12 +65,17 @@ func TestSlingNew(t *testing.T) {
 		if copy.RawUrl != sling.RawUrl {
 			t.Errorf("expected %s, got %s", sling.RawUrl, copy.RawUrl)
 		}
+		// queryStruct slice should be a new slice with a copy of the contents
 		if len(sling.queryStructs) > 0 {
-			// mutating the queryStructs must not mutate original
+			// mutating one slice should not mutate the other
 			copy.queryStructs[0] = nil
 			if sling.queryStructs[0] == nil {
-				t.Errorf("copy's queryStructs is a re-slice, not a copy")
+				t.Errorf("queryStructs was a re-slice, expected slice with copied contents")
 			}
+		}
+		// jsonBody should be copied
+		if copy.jsonBody != sling.jsonBody {
+			t.Errorf("expected %v, got %v")
 		}
 	}
 }
@@ -130,20 +159,6 @@ func TestMethodSetters(t *testing.T) {
 	}
 }
 
-var paramsA = struct {
-	Limit int `url:"limit"`
-}{
-	30,
-}
-
-var paramsB = struct {
-	KindName string `url:"kind_name"`
-	Count    int    `url:"count"`
-}{
-	"recent",
-	25,
-}
-
 func TestQueryStructSetter(t *testing.T) {
 	cases := []struct {
 		sling           *Sling
@@ -172,13 +187,6 @@ func TestQueryStructSetter(t *testing.T) {
 			t.Errorf("expected to find %v in %v", expected, c.sling.queryStructs)
 		}
 	}
-}
-
-// Example JSON-tagged struct
-type FakeModel struct {
-	Text          string  `json:"text,omitempty"`
-	FavoriteCount int64   `json:"favorite_count,omitempty"`
-	Temperature   float64 `json:"temperature,omitempty"`
 }
 
 func TestJsonBodySetter(t *testing.T) {
