@@ -10,12 +10,14 @@ import (
 )
 
 const (
-	HEAD   = "HEAD"
-	GET    = "GET"
-	POST   = "POST"
-	PUT    = "PUT"
-	PATCH  = "PATCH"
-	DELETE = "DELETE"
+	HEAD            = "HEAD"
+	GET             = "GET"
+	POST            = "POST"
+	PUT             = "PUT"
+	PATCH           = "PATCH"
+	DELETE          = "DELETE"
+	contentType     = "Content-Type"
+	jsonContentType = "application/json"
 )
 
 // Sling is an HTTP Request builder and sender.
@@ -181,6 +183,7 @@ func (s *Sling) QueryStruct(queryStruct interface{}) *Sling {
 func (s *Sling) JsonBody(jsonBody interface{}) *Sling {
 	if jsonBody != nil {
 		s.jsonBody = jsonBody
+		s.Set(contentType, jsonContentType)
 	}
 	return s
 }

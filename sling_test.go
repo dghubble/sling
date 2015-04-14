@@ -269,6 +269,12 @@ func TestJsonBodySetter(t *testing.T) {
 		if sling.jsonBody != c.expected {
 			t.Errorf("expected %v, got %v", c.expected, sling.jsonBody)
 		}
+		// Header Content-Type should be application/json if jsonBody arg was non-nil
+		if c.input != nil && sling.Header.Get(contentType) != jsonContentType {
+			t.Errorf("Incorrect or missing header, expected %s, got %s", jsonContentType, sling.Header.Get(contentType))
+		} else if c.input == nil && sling.Header.Get(contentType) != "" {
+			t.Errorf("did not expect a Content-Type header, got %s", sling.Header.Get(contentType))
+		}
 	}
 }
 
@@ -348,8 +354,13 @@ func TestRequest_jsonBody(t *testing.T) {
 		req, _ := c.sling.Request()
 		buf := new(bytes.Buffer)
 		buf.ReadFrom(req.Body)
+		// req.Body should have contained the expectedBody string
 		if value := buf.String(); value != c.expectedBody {
 			t.Errorf("expected Request.Body %s, got %s", c.expectedBody, value)
+		}
+		// Header Content-Type should be application/json
+		if actualHeader := req.Header.Get(contentType); actualHeader != jsonContentType {
+			t.Errorf("Incorrect or missing header, expected %s, got %s", jsonContentType, actualHeader)
 		}
 	}
 
@@ -362,6 +373,10 @@ func TestRequest_jsonBody(t *testing.T) {
 		req, _ := sling.Request()
 		if req.Body != nil {
 			t.Errorf("expected nil Request.Body, got %v", req.Body)
+		}
+		// Header Content-Type should not be set when jsonBody argument was nil or never called
+		if actualHeader := req.Header.Get(contentType); actualHeader != "" {
+			t.Errorf("did not expect a Content-Type header, got %s", actualHeader)
 		}
 	}
 
