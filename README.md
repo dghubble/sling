@@ -4,7 +4,7 @@
 
 Sling is a Go REST client library for creating and sending requests. 
 
-Slings store http Request properties to simplify sending requests and decoding responses. Check [Usage](#Usage) or the [examples](examples) to learn how to compose a Sling into your API client.
+Slings store http Request properties to simplify sending requests and decoding responses. Check [Usage](#usage) or the [examples](examples) to learn how to compose a Sling into your API client.
 
 ### Features
 

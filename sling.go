@@ -26,6 +26,8 @@ type Sling struct {
 	Method string
 	// raw url string for requests
 	RawUrl string
+	// stores key-values pairs to add to request's Headers
+	Header http.Header
 	// url tagged query structs
 	queryStructs []interface{}
 	// json tagged body struct
@@ -36,6 +38,7 @@ type Sling struct {
 func New() *Sling {
 	return &Sling{
 		HttpClient:   http.DefaultClient,
+		Header:       make(http.Header),
 		queryStructs: make([]interface{}, 0),
 	}
 }
@@ -52,12 +55,18 @@ func New() *Sling {
 //
 // Note that jsonBody and queryStructs item values are copied so if pointer
 // values are used, mutating the original value will mutate the value within
-// a copied Sling.
+// the child Sling.
 func (s *Sling) New() *Sling {
+	// copy Headers pairs into new Header map
+	headerCopy := make(http.Header)
+	for k, v := range s.Header {
+		headerCopy[k] = v
+	}
 	return &Sling{
 		HttpClient:   s.HttpClient,
 		Method:       s.Method,
 		RawUrl:       s.RawUrl,
+		Header:       headerCopy,
 		queryStructs: append([]interface{}{}, s.queryStructs...),
 		jsonBody:     s.jsonBody,
 	}
@@ -112,6 +121,22 @@ func (s *Sling) Patch(pathUrl string) *Sling {
 func (s *Sling) Delete(pathUrl string) *Sling {
 	s.Method = DELETE
 	return s.Path(pathUrl)
+}
+
+// Header
+
+// Add adds the key, value pair in Headers, appending values for existing keys
+// to the key's values. Header keys are canonicalized.
+func (s *Sling) Add(key, value string) *Sling {
+	s.Header.Add(key, value)
+	return s
+}
+
+// Set sets the key, value pair in Headers, replacing existing values
+// associated with key. Header keys are canonicalized.
+func (s *Sling) Set(key, value string) *Sling {
+	s.Header.Set(key, value)
+	return s
 }
 
 // Url
@@ -185,6 +210,7 @@ func (s *Sling) Request() (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
+	addHeaders(req, s.Header)
 	return req, err
 }
 
@@ -225,6 +251,16 @@ func encodeJsonBody(jsonBody interface{}) (io.Reader, error) {
 		}
 	}
 	return buf, nil
+}
+
+// addHeaders adds the key, value pairs from the given http.Header to the
+// request. Values for existing keys are appended to the keys values.
+func addHeaders(req *http.Request, header http.Header) {
+	for key, values := range header {
+		for _, value := range values {
+			req.Header.Add(key, value)
+		}
+	}
 }
 
 // Sending

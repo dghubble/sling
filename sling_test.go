@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"testing"
 )
 
@@ -38,6 +39,9 @@ func TestNew(t *testing.T) {
 	if sling.HttpClient != http.DefaultClient {
 		t.Errorf("expected %v, got %v", http.DefaultClient, sling.HttpClient)
 	}
+	if sling.Header == nil {
+		t.Errorf("Header map not initialized with make")
+	}
 	if sling.queryStructs == nil {
 		t.Errorf("queryStructs not initialized with make")
 	}
@@ -53,28 +57,43 @@ func TestSlingNew(t *testing.T) {
 		&Sling{jsonBody: &FakeModel{Text: "a"}},
 		&Sling{jsonBody: FakeModel{Text: "a"}},
 		&Sling{jsonBody: nil},
+		New().Add("Content-Type", "application/json"),
+		New().Add("A", "B").Add("a", "c").New(),
+		New().Add("A", "B").New().Add("a", "c"),
 	}
 	for _, sling := range cases {
-		copy := sling.New()
-		if copy.HttpClient != sling.HttpClient {
-			t.Errorf("expected %p, got %p", sling.HttpClient, copy.HttpClient)
+		child := sling.New()
+		if child.HttpClient != sling.HttpClient {
+			t.Errorf("expected %p, got %p", sling.HttpClient, child.HttpClient)
 		}
-		if copy.Method != sling.Method {
-			t.Errorf("expected %s, got %s", sling.Method, copy.Method)
+		if child.Method != sling.Method {
+			t.Errorf("expected %s, got %s", sling.Method, child.Method)
 		}
-		if copy.RawUrl != sling.RawUrl {
-			t.Errorf("expected %s, got %s", sling.RawUrl, copy.RawUrl)
+		if child.RawUrl != sling.RawUrl {
+			t.Errorf("expected %s, got %s", sling.RawUrl, child.RawUrl)
+		}
+		// Header should be a copy of parent Sling Header. For example, calling
+		// baseSling.Add("k","v") should not mutate previously created child Slings
+		if sling.Header != nil {
+			// struct literal cases don't init Header in usual way, skip Header check
+			if !reflect.DeepEqual(sling.Header, child.Header) {
+				t.Errorf("not DeepEqual: expected %v, got %v", sling.Header, child.Header)
+			}
+			sling.Header.Add("K", "V")
+			if child.Header.Get("K") != "" {
+				t.Errorf("child.Header was a reference to original map, should be copy")
+			}
 		}
 		// queryStruct slice should be a new slice with a copy of the contents
 		if len(sling.queryStructs) > 0 {
 			// mutating one slice should not mutate the other
-			copy.queryStructs[0] = nil
+			child.queryStructs[0] = nil
 			if sling.queryStructs[0] == nil {
-				t.Errorf("queryStructs was a re-slice, expected slice with copied contents")
+				t.Errorf("child.queryStructs was a re-slice, expected slice with copied contents")
 			}
 		}
 		// jsonBody should be copied
-		if copy.jsonBody != sling.jsonBody {
+		if child.jsonBody != sling.jsonBody {
 			t.Errorf("expected %v, got %v")
 		}
 	}
@@ -155,6 +174,50 @@ func TestMethodSetters(t *testing.T) {
 	for _, c := range cases {
 		if c.sling.Method != c.expectedMethod {
 			t.Errorf("expected method %s, got %s", c.expectedMethod, c.sling.Method)
+		}
+	}
+}
+
+func TestAddHeader(t *testing.T) {
+	cases := []struct {
+		sling          *Sling
+		expectedHeader map[string][]string
+	}{
+		{New().Add("authorization", "OAuth key=\"value\""), map[string][]string{"Authorization": []string{"OAuth key=\"value\""}}},
+		// header keys should be canonicalized
+		{New().Add("content-tYPE", "application/json").Add("User-AGENT", "sling"), map[string][]string{"Content-Type": []string{"application/json"}, "User-Agent": []string{"sling"}}},
+		// values for existing keys should be appended
+		{New().Add("A", "B").Add("a", "c"), map[string][]string{"A": []string{"B", "c"}}},
+		// Add should add to values for keys added by parent Slings
+		{New().Add("A", "B").Add("a", "c").New(), map[string][]string{"A": []string{"B", "c"}}},
+		{New().Add("A", "B").New().Add("a", "c"), map[string][]string{"A": []string{"B", "c"}}},
+	}
+	for _, c := range cases {
+		// type conversion from Header to alias'd map for deep equality comparison
+		headerMap := map[string][]string(c.sling.Header)
+		if !reflect.DeepEqual(c.expectedHeader, headerMap) {
+			t.Errorf("not DeepEqual: expected %v, got %v", c.expectedHeader, headerMap)
+		}
+	}
+}
+
+func TestSetHeader(t *testing.T) {
+	cases := []struct {
+		sling          *Sling
+		expectedHeader map[string][]string
+	}{
+		// should replace existing values associated with key
+		{New().Add("A", "B").Set("a", "c"), map[string][]string{"A": []string{"c"}}},
+		{New().Set("content-type", "A").Set("Content-Type", "B"), map[string][]string{"Content-Type": []string{"B"}}},
+		// Set should replace values received by copying parent Slings
+		{New().Set("A", "B").Add("a", "c").New(), map[string][]string{"A": []string{"B", "c"}}},
+		{New().Add("A", "B").New().Set("a", "c"), map[string][]string{"A": []string{"c"}}},
+	}
+	for _, c := range cases {
+		// type conversion from Header to alias'd map for deep equality comparison
+		headerMap := map[string][]string(c.sling.Header)
+		if !reflect.DeepEqual(c.expectedHeader, headerMap) {
+			t.Errorf("not DeepEqual: expected %v, got %v", c.expectedHeader, headerMap)
 		}
 	}
 }
@@ -311,6 +374,36 @@ func TestRequest_jsonBody(t *testing.T) {
 	}
 	if req != nil {
 		t.Errorf("expected nil Request, got %v", req)
+	}
+}
+
+func TestRequest_headers(t *testing.T) {
+	cases := []struct {
+		sling          *Sling
+		expectedHeader map[string][]string
+	}{
+		{New().Add("authorization", "OAuth key=\"value\""), map[string][]string{"Authorization": []string{"OAuth key=\"value\""}}},
+		// header keys should be canonicalized
+		{New().Add("content-tYPE", "application/json").Add("User-AGENT", "sling"), map[string][]string{"Content-Type": []string{"application/json"}, "User-Agent": []string{"sling"}}},
+		// values for existing keys should be appended
+		{New().Add("A", "B").Add("a", "c"), map[string][]string{"A": []string{"B", "c"}}},
+		// Add should add to values for keys added by parent Slings
+		{New().Add("A", "B").Add("a", "c").New(), map[string][]string{"A": []string{"B", "c"}}},
+		{New().Add("A", "B").New().Add("a", "c"), map[string][]string{"A": []string{"B", "c"}}},
+		// Add and Set
+		{New().Add("A", "B").Set("a", "c"), map[string][]string{"A": []string{"c"}}},
+		{New().Set("content-type", "A").Set("Content-Type", "B"), map[string][]string{"Content-Type": []string{"B"}}},
+		// Set should replace values received by copying parent Slings
+		{New().Set("A", "B").Add("a", "c").New(), map[string][]string{"A": []string{"B", "c"}}},
+		{New().Add("A", "B").New().Set("a", "c"), map[string][]string{"A": []string{"c"}}},
+	}
+	for _, c := range cases {
+		req, _ := c.sling.Request()
+		// type conversion from Header to alias'd map for deep equality comparison
+		headerMap := map[string][]string(req.Header)
+		if !reflect.DeepEqual(c.expectedHeader, headerMap) {
+			t.Errorf("not DeepEqual: expected %v, got %v", c.expectedHeader, headerMap)
+		}
 	}
 }
 
