@@ -3,8 +3,9 @@ package main
 import (
 	"fmt"
 	"github.com/dghubble/sling"
+	"golang.org/x/oauth2"
 	"net/http"
-	//"golang.org/x/oauth2"
+	"os"
 )
 
 const baseUrl = "https://api.github.com/"
@@ -30,7 +31,7 @@ type IssueRequest struct {
 }
 
 // https://developer.github.com/v3/issues/#parameters
-type IssueParams struct {
+type IssueListParams struct {
 	Filter    string `url:"filter,omitempty"`
 	State     string `url:"state,omitempty"`
 	Labels    string `url:"labels,omitempty"`
@@ -51,7 +52,13 @@ func NewIssueService(httpClient *http.Client) *IssueService {
 	}
 }
 
-func (s IssueService) List(owner, repo string, params *IssueParams) ([]Issue, *http.Response, error) {
+func (s *IssueService) List(params *IssueListParams) ([]Issue, *http.Response, error) {
+	issues := new([]Issue)
+	resp, err := s.sling.New().Path("issues").QueryStruct(params).Receive(issues)
+	return *issues, resp, err
+}
+
+func (s *IssueService) ListByRepo(owner, repo string, params *IssueListParams) ([]Issue, *http.Response, error) {
 	issues := new([]Issue)
 	path := fmt.Sprintf("repos/%s/%s/issues", owner, repo)
 	resp, err := s.sling.New().Get(path).QueryStruct(params).Receive(issues)
@@ -80,32 +87,43 @@ func NewClient(httpClient *http.Client) *Client {
 }
 
 // example use of the tiny Github API
-
 func main() {
-	// Use httpClient with your token to perform authenticated operations
-	// ts := &tokenSource{
-	// 	&oauth2.Token{AccessToken: "_your_token_"},
-	// }
-	// httpClient := oauth2.NewClient(oauth2.NoContext, ts)
+
+	// Github Unauthenticated API
 	client := NewClient(nil)
+	params := &IssueListParams{Sort: "updated"}
+	issues, _, _ := client.IssueService.ListByRepo("golang", "go", params)
+	fmt.Printf("Public golang/go Issues:\n%v\n", issues)
+
+	// Github OAuth2 Example - httpClient handles authorization
+	accessToken := os.Getenv("GITHUB_ACCESS_TOKEN")
+	if accessToken == "" {
+		fmt.Println("Run 'export GITHUB_ACCESS_TOKEN=mytoken' and retry to list your public/private issues")
+		os.Exit(0)
+	}
+
+	ts := &tokenSource{
+		&oauth2.Token{AccessToken: accessToken},
+	}
+	httpClient := oauth2.NewClient(oauth2.NoContext, ts)
+
+	client = NewClient(httpClient)
+	issues, _, _ = client.IssueService.List(params)
+	fmt.Printf("Your Github Issues:\n%v\n", issues)
+
 	// body := &IssueRequest{
 	// 	Title: "Test title",
 	// 	Body:  "Some test issue",
 	// }
-	// issue, resp, err := client.IssueService.Create("username", "my-repo", body)
-	// fmt.Println(issue, resp, err)
-
-	// Unauthenticated
-	params := &IssueParams{Sort: "updated"}
-	issues, resp, err := client.IssueService.List("golang", "go", params)
-	fmt.Println(issues, resp, err)
+	// issue, _, _ := client.IssueService.Create("username", "myrepo", body)
+	// fmt.Println(issue)
 }
 
-// for using oauth2
-// type tokenSource struct {
-// 	token *oauth2.Token
-// }
+// for using golang/oauth2
+type tokenSource struct {
+	token *oauth2.Token
+}
 
-// func (t *tokenSource) Token() (*oauth2.Token, error) {
-// 	return t.token, nil
-// }
+func (t *tokenSource) Token() (*oauth2.Token, error) {
+	return t.token, nil
+}
