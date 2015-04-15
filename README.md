@@ -1,5 +1,7 @@
 
 # Sling [![Build Status](https://travis-ci.org/dghubble/sling.png)](https://travis-ci.org/dghubble/sling) [![GoDoc](http://godoc.org/github.com/dghubble/sling?status.png)](http://godoc.org/github.com/dghubble/sling)
+
+[![Join the chat at https://gitter.im/dghubble/sling](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/dghubble/sling?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 <img align="right" src="https://s3.amazonaws.com/dghubble/small-gopher-with-sling.png">
 
 Sling is a Go REST client library for creating and sending requests. 
