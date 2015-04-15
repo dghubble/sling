@@ -1,13 +1,12 @@
 /*
-Sling is a Go REST client library for creating and sending requests.
+Package sling is a Go REST client library for creating and sending requests.
 
-Slings store http Request properties to simplify sending requests and
-decoding responses. Check the examples to learn how to compose a Sling
-into your API client.
+Slings store http Request properties to simplify sending requests and decoding
+responses. Check the examples to learn how to compose a Sling into your API
+client.
 
-Use a simple Sling to set request properties (Path, QueryParams, etc.)
-and then create a new http.Request by calling Request().
-
+Use a simple Sling to set request properties (Path, QueryParams, etc.) and
+then create a new http.Request by calling Request().
 
 	req, err := sling.New().Get("https://example.com").Request()
 	client.Do(req)
@@ -22,11 +21,11 @@ repeating common configuration.
 	users := base.New().Path("users/")
 	statuses := base.New().Path("statuses/")
 
-Choose an http Method and extend the path. Check the usage README to see how
-you can set typed query parameters, set typed body data, and decode the typed
-response.
+Choose an http method, set query parameters, and send the request.
 
 	statuses.New().Get("show.json").QueryStruct(params).Receive(tweet)
 
+The usage README provides more details about setting headers, query parameters,
+body data, and decoding a typed response after sending.
 */
 package sling

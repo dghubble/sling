@@ -1,5 +1,5 @@
 
-# Sling [![Build Status](https://travis-ci.org/dghubble/sling.png)](https://travis-ci.org/dghubble/sling) [![GoDoc](http://godoc.org/github.com/dghubble/sling?status.png)](http://godoc.org/github.com/dghubble/sling)
+# Sling [![Build Status](https://travis-ci.org/dghubble/sling.png)](https://travis-ci.org/dghubble/sling) [![Coverage](http://gocover.io/_badge/github.com/dghubble/sling)](http://gocover.io/github.com/dghubble/sling) [![GoDoc](http://godoc.org/github.com/dghubble/sling?status.png)](http://godoc.org/github.com/dghubble/sling)
 <img align="right" src="https://s3.amazonaws.com/dghubble/small-gopher-with-sling.png">
 
 Sling is a Go REST client library for creating and sending requests. 
@@ -13,7 +13,7 @@ Slings store http Request properties to simplify sending requests and decoding r
 * Add and Set Request Headers
 * Encode structs into URL query parameters
 * Encode JSON into the Request Body
-* Receive decoded JSON success responses
+* Decode received JSON success responses
 
 ## Install
 
@@ -42,11 +42,13 @@ users := base.New().Path("users/")
 statuses := base.New().Path("statuses/")
 ```
 
-Choose an http Method and extend the path. Continue reading to see how you can set typed query parameters, set typed body data, and decode the typed response.
+Choose an http method, set query parameters, and send the request.
 
 ```go
 statuses.New().Get("show.json").QueryStruct(params).Receive(tweet)
 ```
+
+The sections below provide more details about setting headers, query parameters, body data, and decoding a typed response after sending.
 
 ### QueryStruct
 
@@ -68,7 +70,7 @@ type IssueParams struct {
 githubBase := sling.New().Base("https://api.github.com/").Client(httpClient)
 path := fmt.Sprintf("repos/%s/%s/issues", owner, repo)
 
-params := {Sort: "updated", State: "open"}
+params := &IssueParams{Sort: "updated", State: "open"}
 req, err := githubBase.New().Get(path).QueryStruct(params).Request()
 ```
 
