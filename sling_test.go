@@ -13,19 +13,18 @@ import (
 	"testing"
 )
 
+type FakeParams struct {
+	KindName string `url:"kind_name"`
+	Count    int    `url:"count"`
+}
+
 // Url-tagged query struct
 var paramsA = struct {
 	Limit int `url:"limit"`
 }{
 	30,
 }
-var paramsB = struct {
-	KindName string `url:"kind_name"`
-	Count    int    `url:"count"`
-}{
-	"recent",
-	25,
-}
+var paramsB = FakeParams{KindName: "recent", Count: 25}
 
 // Json-tagged model struct
 type FakeModel struct {
@@ -33,6 +32,8 @@ type FakeModel struct {
 	FavoriteCount int64   `json:"favorite_count,omitempty"`
 	Temperature   float64 `json:"temperature,omitempty"`
 }
+
+var modelA = FakeModel{Text: "note", FavoriteCount: 12}
 
 func TestNew(t *testing.T) {
 	sling := New()
@@ -60,6 +61,8 @@ func TestSlingNew(t *testing.T) {
 		New().Add("Content-Type", "application/json"),
 		New().Add("A", "B").Add("a", "c").New(),
 		New().Add("A", "B").New().Add("a", "c"),
+		New().BodyStruct(paramsB),
+		New().BodyStruct(paramsB).New(),
 	}
 	for _, sling := range cases {
 		child := sling.New()
@@ -95,6 +98,10 @@ func TestSlingNew(t *testing.T) {
 		// jsonBody should be copied
 		if child.jsonBody != sling.jsonBody {
 			t.Errorf("expected %v, got %v")
+		}
+		// bodyStruct should be copied
+		if child.bodyStruct != sling.bodyStruct {
+			t.Errorf("expected %v, got %v", sling.bodyStruct, child.bodyStruct)
 		}
 	}
 }
@@ -259,8 +266,12 @@ func TestJsonBodySetter(t *testing.T) {
 		input    interface{}
 		expected interface{}
 	}{
-		{fakeModel, nil, fakeModel},
+		// json tagged struct is set as jsonBody
 		{nil, fakeModel, fakeModel},
+		// nil argument to jsonBody does not replace existing jsonBody
+		{fakeModel, nil, fakeModel},
+		// nil jsonBody remains nil
+		{nil, nil, nil},
 	}
 	for _, c := range cases {
 		sling := New()
@@ -276,6 +287,36 @@ func TestJsonBodySetter(t *testing.T) {
 			t.Errorf("did not expect a Content-Type header, got %s", sling.Header.Get(contentType))
 		}
 	}
+}
+
+func TestBodyStructSetter(t *testing.T) {
+	cases := []struct {
+		initial  interface{}
+		input    interface{}
+		expected interface{}
+	}{
+		// url tagged struct is set as bodyStruct
+		{nil, paramsB, paramsB},
+		// nil argument to bodyStruct does not replace existing bodyStruct
+		{paramsB, nil, paramsB},
+		// nil bodyStruct remains nil
+		{nil, nil, nil},
+	}
+	for _, c := range cases {
+		sling := New()
+		sling.bodyStruct = c.initial
+		sling.BodyStruct(c.input)
+		if sling.bodyStruct != c.expected {
+			t.Errorf("expected %v, got %v", c.expected, sling.bodyStruct)
+		}
+		// Content-Type should be application/x-www-form-urlencoded if bodyStruct was non-nil
+		if c.input != nil && sling.Header.Get(contentType) != formContentType {
+			t.Errorf("Incorrect or missing header, expected %s, got %s", formContentType, sling.Header.Get(contentType))
+		} else if c.input == nil && sling.Header.Get(contentType) != "" {
+			t.Errorf("did not expect a Content-Type header, got %s", sling.Header.Get(contentType))
+		}
+	}
+
 }
 
 func TestRequest_urlAndMethod(t *testing.T) {
@@ -338,17 +379,30 @@ func TestRequest_queryStructs(t *testing.T) {
 	}
 }
 
-func TestRequest_jsonBody(t *testing.T) {
+func TestRequest_body(t *testing.T) {
 	cases := []struct {
-		sling        *Sling
-		expectedBody string // expected Body io.Reader as a string
+		sling               *Sling
+		expectedBody        string // expected Body io.Reader as a string
+		expectedContentType string
 	}{
-		{New().JsonBody(&FakeModel{Text: "note", FavoriteCount: 12}), "{\"text\":\"note\",\"favorite_count\":12}\n"},
-		{New().JsonBody(FakeModel{Text: "note", FavoriteCount: 12}), "{\"text\":\"note\",\"favorite_count\":12}\n"},
-		{New().JsonBody(&FakeModel{}), "{}\n"},
-		{New().JsonBody(FakeModel{}), "{}\n"},
-		// setting the jsonBody overrides existing jsonBody
-		{New().JsonBody(&FakeModel{}).JsonBody(&FakeModel{Text: "msg"}), "{\"text\":\"msg\"}\n"},
+		// JsonBody
+		{New().JsonBody(modelA), "{\"text\":\"note\",\"favorite_count\":12}\n", jsonContentType},
+		{New().JsonBody(&modelA), "{\"text\":\"note\",\"favorite_count\":12}\n", jsonContentType},
+		{New().JsonBody(&FakeModel{}), "{}\n", jsonContentType},
+		{New().JsonBody(FakeModel{}), "{}\n", jsonContentType},
+		// JsonBody overrides existing values
+		{New().JsonBody(&FakeModel{}).JsonBody(&FakeModel{Text: "msg"}), "{\"text\":\"msg\"}\n", jsonContentType},
+		// BodyStruct (form)
+		{New().BodyStruct(paramsA), "limit=30", formContentType},
+		{New().BodyStruct(paramsB), "count=25&kind_name=recent", formContentType},
+		{New().BodyStruct(&paramsB), "count=25&kind_name=recent", formContentType},
+		// BodyStruct overrides existing values
+		{New().BodyStruct(paramsA).New().BodyStruct(paramsB), "count=25&kind_name=recent", formContentType},
+		// Mixture of JsonBody and BodyStruct prefers body setter called last with a non-nil argument
+		{New().BodyStruct(paramsB).New().JsonBody(modelA), "{\"text\":\"note\",\"favorite_count\":12}\n", jsonContentType},
+		{New().JsonBody(modelA).New().BodyStruct(paramsB), "count=25&kind_name=recent", formContentType},
+		{New().BodyStruct(paramsB).New().JsonBody(nil), "count=25&kind_name=recent", formContentType},
+		{New().JsonBody(modelA).New().BodyStruct(nil), "{\"text\":\"note\",\"favorite_count\":12}\n", jsonContentType},
 	}
 	for _, c := range cases {
 		req, _ := c.sling.Request()
@@ -359,15 +413,18 @@ func TestRequest_jsonBody(t *testing.T) {
 			t.Errorf("expected Request.Body %s, got %s", c.expectedBody, value)
 		}
 		// Header Content-Type should be application/json
-		if actualHeader := req.Header.Get(contentType); actualHeader != jsonContentType {
-			t.Errorf("Incorrect or missing header, expected %s, got %s", jsonContentType, actualHeader)
+		if actualHeader := req.Header.Get(contentType); actualHeader != c.expectedContentType {
+			t.Errorf("Incorrect or missing header, expected %s, got %s", c.expectedContentType, actualHeader)
 		}
 	}
+}
 
-	// test that Body is left nil when no JSON struct is set via JsonBody
+func TestRequest_bodyNoData(t *testing.T) {
+	// test that Body is left nil when no jsonBody or bodyStruct set
 	slings := []*Sling{
-		New().JsonBody(nil),
 		New(),
+		New().JsonBody(nil),
+		New().BodyStruct(nil),
 	}
 	for _, sling := range slings {
 		req, _ := sling.Request()
@@ -379,16 +436,24 @@ func TestRequest_jsonBody(t *testing.T) {
 			t.Errorf("did not expect a Content-Type header, got %s", actualHeader)
 		}
 	}
+}
 
-	// test that expected jsonBody encoding errors occur, use illegal JSON field
-	sling := New().JsonBody(&FakeModel{Temperature: math.Inf(1)})
-	req, err := sling.Request()
-	expectedErr := errors.New("json: unsupported value: +Inf")
-	if err == nil || err.Error() != expectedErr.Error() {
-		t.Errorf("expected error %v, got %v", expectedErr, err)
+func TestRequest_bodyEncodeErrors(t *testing.T) {
+	cases := []struct {
+		sling       *Sling
+		expectedErr error
+	}{
+		// check that Encode errors are propagated, illegal JSON field
+		{New().JsonBody(FakeModel{Temperature: math.Inf(1)}), errors.New("json: unsupported value: +Inf")},
 	}
-	if req != nil {
-		t.Errorf("expected nil Request, got %v", req)
+	for _, c := range cases {
+		req, err := c.sling.Request()
+		if err == nil || err.Error() != c.expectedErr.Error() {
+			t.Errorf("expected error %v, got %v", c.expectedErr, err)
+		}
+		if req != nil {
+			t.Errorf("expected nil Request, got %+v", req)
+		}
 	}
 }
 
@@ -440,47 +505,6 @@ func TestAddQueryStructs(t *testing.T) {
 		addQueryStructs(reqURL, c.queryStructs)
 		if reqURL.String() != c.expected {
 			t.Errorf("expected %s, got %s", c.expected, reqURL.String())
-		}
-	}
-}
-
-func TestEncodeJsonBody(t *testing.T) {
-	cases := []struct {
-		jsonStruct     interface{}
-		expectedReader string // expected io.Reader as a string
-		expectedErr    error
-	}{
-		{&FakeModel{Text: "note", FavoriteCount: 12}, "{\"text\":\"note\",\"favorite_count\":12}\n", nil},
-		{FakeModel{Text: "note", FavoriteCount: 12}, "{\"text\":\"note\",\"favorite_count\":12}\n", nil},
-		// nil argument should return an empty reader
-		{nil, "", nil},
-		// zero valued json-tagged should return empty object JSON {}
-		{&FakeModel{}, "{}\n", nil},
-		{FakeModel{}, "{}\n", nil},
-		// check that Encode errors are propagated, illegal JSON field
-		{FakeModel{Temperature: math.Inf(1)}, "", errors.New("json: unsupported value: +Inf")},
-	}
-	for _, c := range cases {
-		reader, err := encodeJsonBody(c.jsonStruct)
-		if c.expectedErr == nil {
-			// err expected to be nil, io.Reader should be readable
-			if err != nil {
-				t.Errorf("expected error %v, got %v", nil, err)
-			}
-			buf := new(bytes.Buffer)
-			buf.ReadFrom(reader)
-			if value := buf.String(); value != c.expectedReader {
-				fmt.Println(len(value))
-				t.Errorf("expected jsonBody string \"%s\", got \"%s\"", c.expectedReader, value)
-			}
-		} else {
-			// err is non-nil, io.Reader is not readable
-			if err.Error() != c.expectedErr.Error() {
-				t.Errorf("expected error %s, got %s", c.expectedErr.Error(), err.Error())
-			}
-			if reader != nil {
-				t.Errorf("expected jsonBody nil, got %v", reader)
-			}
 		}
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 const (
@@ -18,6 +19,7 @@ const (
 	DELETE          = "DELETE"
 	contentType     = "Content-Type"
 	jsonContentType = "application/json"
+	formContentType = "application/x-www-form-urlencoded"
 )
 
 // Sling is an HTTP Request builder and sender.
@@ -34,6 +36,8 @@ type Sling struct {
 	queryStructs []interface{}
 	// json tagged body struct
 	jsonBody interface{}
+	// url tagged body struct (form)
+	bodyStruct interface{}
 }
 
 // New returns a new Sling with an http DefaultClient.
@@ -71,6 +75,7 @@ func (s *Sling) New() *Sling {
 		Header:       headerCopy,
 		queryStructs: append([]interface{}{}, s.queryStructs...),
 		jsonBody:     s.jsonBody,
+		bodyStruct:   s.bodyStruct,
 	}
 }
 
@@ -188,6 +193,18 @@ func (s *Sling) JsonBody(jsonBody interface{}) *Sling {
 	return s
 }
 
+// BodyStruct sets the Sling's bodyStruct. The value pointed to by the
+// bodyStruct will be url encoded to set the Body on new requests.
+// The bodyStruct argument should be a pointer to a url tagged struct. See
+// https://godoc.org/github.com/google/go-querystring/query for details.
+func (s *Sling) BodyStruct(bodyStruct interface{}) *Sling {
+	if bodyStruct != nil {
+		s.bodyStruct = bodyStruct
+		s.Set(contentType, formContentType)
+	}
+	return s
+}
+
 // Requests
 
 // Request returns a new http.Request created with the Sling properties.
@@ -202,12 +219,9 @@ func (s *Sling) Request() (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	var body io.Reader
-	if s.jsonBody != nil {
-		body, err = encodeJsonBody(s.jsonBody)
-		if err != nil {
-			return nil, err
-		}
+	body, err := s.getRequestBody()
+	if err != nil {
+		return nil, err
 	}
 	req, err := http.NewRequest(s.Method, reqURL.String(), body)
 	if err != nil {
@@ -242,6 +256,23 @@ func addQueryStructs(reqURL *url.URL, queryStructs []interface{}) error {
 	return nil
 }
 
+// getRequestBody returns the io.Reader which should be used as the body
+// of new Requests.
+func (s *Sling) getRequestBody() (body io.Reader, err error) {
+	if s.jsonBody != nil && s.Header.Get(contentType) == jsonContentType {
+		body, err = encodeJsonBody(s.jsonBody)
+		if err != nil {
+			return nil, err
+		}
+	} else if s.bodyStruct != nil && s.Header.Get(contentType) == formContentType {
+		body, err = encodeBodyStruct(s.bodyStruct)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return body, nil
+}
+
 // encodeJsonBody JSON encodes the value pointed to by jsonBody into an
 // io.Reader, typically for use as a Request Body.
 func encodeJsonBody(jsonBody interface{}) (io.Reader, error) {
@@ -254,6 +285,16 @@ func encodeJsonBody(jsonBody interface{}) (io.Reader, error) {
 		}
 	}
 	return buf, nil
+}
+
+// encodeBodyStruct url encodes the value pointed to by bodyStruct into an
+// io.Reader, typically for use as a Request Body.
+func encodeBodyStruct(bodyStruct interface{}) (io.Reader, error) {
+	values, err := goquery.Values(bodyStruct)
+	if err != nil {
+		return nil, err
+	}
+	return strings.NewReader(values.Encode()), nil
 }
 
 // addHeaders adds the key, value pairs from the given http.Header to the
