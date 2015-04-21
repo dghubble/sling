@@ -97,7 +97,7 @@ func TestSlingNew(t *testing.T) {
 		}
 		// jsonBody should be copied
 		if child.jsonBody != sling.jsonBody {
-			t.Errorf("expected %v, got %v")
+			t.Errorf("expected %v, got %v", child.jsonBody, sling.jsonBody)
 		}
 		// bodyStruct should be copied
 		if child.bodyStruct != sling.bodyStruct {
