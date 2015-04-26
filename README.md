@@ -35,7 +35,7 @@ client.Do(req)
 Slings are much more powerful though. Use them to create REST clients which wrap complex API endpoints. Copy a base Sling with `New()` to avoid repeating common configuration.
 
 ```go
-const twitterApi = "https://https://api.twitter.com/1.1/"
+const twitterApi = "https://api.twitter.com/1.1/"
 base := sling.New().Base(twitterApi).Client(httpAuthClient)
 
 users := base.New().Path("users/")
