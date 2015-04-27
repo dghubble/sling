@@ -136,9 +136,9 @@ func TestBaseSetter(t *testing.T) {
 
 func TestPathSetter(t *testing.T) {
 	cases := []struct {
-		rawUrl         string
+		rawURL         string
 		path           string
-		expectedRawUrl string
+		expectedRawURL string
 	}{
 		{"http://a.io/", "foo", "http://a.io/foo"},
 		{"http://a.io/", "/foo", "http://a.io/foo"},
@@ -159,9 +159,9 @@ func TestPathSetter(t *testing.T) {
 		{"", "", ""},
 	}
 	for _, c := range cases {
-		sling := New().Base(c.rawUrl).Path(c.path)
-		if sling.RawUrl != c.expectedRawUrl {
-			t.Errorf("expected %s, got %s", c.expectedRawUrl, sling.RawUrl)
+		sling := New().Base(c.rawURL).Path(c.path)
+		if sling.RawUrl != c.expectedRawURL {
+			t.Errorf("expected %s, got %s", c.expectedRawURL, sling.RawUrl)
 		}
 	}
 }
@@ -323,7 +323,7 @@ func TestRequest_urlAndMethod(t *testing.T) {
 	cases := []struct {
 		sling          *Sling
 		expectedMethod string
-		expectedUrl    string
+		expectedURL    string
 		expectedErr    error
 	}{
 		{New().Base("http://a.io"), "", "http://a.io", nil},
@@ -351,8 +351,8 @@ func TestRequest_urlAndMethod(t *testing.T) {
 		if err != c.expectedErr {
 			t.Errorf("expected error %v, got %v for %+v", c.expectedErr, err, c.sling)
 		}
-		if req.URL.String() != c.expectedUrl {
-			t.Errorf("expected url %s, got %s for %+v", c.expectedUrl, req.URL.String(), c.sling)
+		if req.URL.String() != c.expectedURL {
+			t.Errorf("expected url %s, got %s for %+v", c.expectedURL, req.URL.String(), c.sling)
 		}
 		if req.Method != c.expectedMethod {
 			t.Errorf("expected method %s, got %s for %+v", c.expectedMethod, req.Method, c.sling)
@@ -363,7 +363,7 @@ func TestRequest_urlAndMethod(t *testing.T) {
 func TestRequest_queryStructs(t *testing.T) {
 	cases := []struct {
 		sling       *Sling
-		expectedUrl string
+		expectedURL string
 	}{
 		{New().Base("http://a.io").QueryStruct(paramsA), "http://a.io?limit=30"},
 		{New().Base("http://a.io").QueryStruct(paramsA).QueryStruct(paramsB), "http://a.io?count=25&kind_name=recent&limit=30"},
@@ -373,8 +373,8 @@ func TestRequest_queryStructs(t *testing.T) {
 	}
 	for _, c := range cases {
 		req, _ := c.sling.Request()
-		if req.URL.String() != c.expectedUrl {
-			t.Errorf("expected url %s, got %s for %+v", c.expectedUrl, req.URL.String(), c.sling)
+		if req.URL.String() != c.expectedURL {
+			t.Errorf("expected url %s, got %s for %+v", c.expectedURL, req.URL.String(), c.sling)
 		}
 	}
 }

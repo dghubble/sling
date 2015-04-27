@@ -94,40 +94,40 @@ func (s *Sling) Client(httpClient *http.Client) *Sling {
 
 // Method
 
-// Head sets the Sling method to HEAD and sets the given pathUrl.
-func (s *Sling) Head(pathUrl string) *Sling {
+// Head sets the Sling method to HEAD and sets the given pathURL.
+func (s *Sling) Head(pathURL string) *Sling {
 	s.Method = HEAD
-	return s.Path(pathUrl)
+	return s.Path(pathURL)
 }
 
-// Get sets the Sling method to GET and sets the given pathUrl.
-func (s *Sling) Get(pathUrl string) *Sling {
+// Get sets the Sling method to GET and sets the given pathURL.
+func (s *Sling) Get(pathURL string) *Sling {
 	s.Method = GET
-	return s.Path(pathUrl)
+	return s.Path(pathURL)
 }
 
-// Post sets the Sling method to POST and sets the given pathUrl.
-func (s *Sling) Post(pathUrl string) *Sling {
+// Post sets the Sling method to POST and sets the given pathURL.
+func (s *Sling) Post(pathURL string) *Sling {
 	s.Method = POST
-	return s.Path(pathUrl)
+	return s.Path(pathURL)
 }
 
-// Put sets the Sling method to PUT and sets the given pathUrl.
-func (s *Sling) Put(pathUrl string) *Sling {
+// Put sets the Sling method to PUT and sets the given pathURL.
+func (s *Sling) Put(pathURL string) *Sling {
 	s.Method = PUT
-	return s.Path(pathUrl)
+	return s.Path(pathURL)
 }
 
-// Patch sets the Sling method to PATCH and sets the given pathUrl.
-func (s *Sling) Patch(pathUrl string) *Sling {
+// Patch sets the Sling method to PATCH and sets the given pathURL.
+func (s *Sling) Patch(pathURL string) *Sling {
 	s.Method = PATCH
-	return s.Path(pathUrl)
+	return s.Path(pathURL)
 }
 
-// Delete sets the Sling method to DELETE and sets the given pathUrl.
-func (s *Sling) Delete(pathUrl string) *Sling {
+// Delete sets the Sling method to DELETE and sets the given pathURL.
+func (s *Sling) Delete(pathURL string) *Sling {
 	s.Method = DELETE
-	return s.Path(pathUrl)
+	return s.Path(pathURL)
 }
 
 // Header
@@ -150,8 +150,8 @@ func (s *Sling) Set(key, value string) *Sling {
 
 // Base sets the RawUrl. If you intend to extend the url with Path,
 // baseUrl should be specified with a trailing slash.
-func (s *Sling) Base(rawurl string) *Sling {
-	s.RawUrl = rawurl
+func (s *Sling) Base(rawURL string) *Sling {
+	s.RawUrl = rawURL
 	return s
 }
 
@@ -260,7 +260,7 @@ func addQueryStructs(reqURL *url.URL, queryStructs []interface{}) error {
 // of new Requests.
 func (s *Sling) getRequestBody() (body io.Reader, err error) {
 	if s.jsonBody != nil && s.Header.Get(contentType) == jsonContentType {
-		body, err = encodeJsonBody(s.jsonBody)
+		body, err = encodeJSONBody(s.jsonBody)
 		if err != nil {
 			return nil, err
 		}
@@ -273,9 +273,9 @@ func (s *Sling) getRequestBody() (body io.Reader, err error) {
 	return body, nil
 }
 
-// encodeJsonBody JSON encodes the value pointed to by jsonBody into an
+// encodeJSONBody JSON encodes the value pointed to by jsonBody into an
 // io.Reader, typically for use as a Request Body.
-func encodeJsonBody(jsonBody interface{}) (io.Reader, error) {
+func encodeJSONBody(jsonBody interface{}) (io.Reader, error) {
 	var buf = new(bytes.Buffer)
 	if jsonBody != nil {
 		buf = &bytes.Buffer{}
