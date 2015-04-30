@@ -38,6 +38,8 @@ type Sling struct {
 	jsonBody interface{}
 	// url tagged body struct (form)
 	bodyStruct interface{}
+	// if true, the sling instance is copied before each mutation.
+	safeMode bool
 }
 
 // New returns a new Sling with an http DefaultClient.
@@ -76,6 +78,25 @@ func (s *Sling) New() *Sling {
 		queryStructs: append([]interface{}{}, s.queryStructs...),
 		jsonBody:     s.jsonBody,
 		bodyStruct:   s.bodyStruct,
+		safeMode:     s.safeMode,
+	}
+}
+
+// Safely returns a copy of a Sling such that all operations on the sling create new,
+// effectively immutable instances
+func (s *Sling) Safely() *Sling {
+	t := s.New()
+	t.safeMode = true
+	return t
+}
+
+// If safeMode is set, safely returns a copy of the Sling instance.
+// Otherwise, it returns a reference to the original Sling instance.
+func (s *Sling) safely() *Sling {
+	if s.safeMode {
+		return s.New()
+	} else {
+		return s
 	}
 }
 
@@ -83,7 +104,8 @@ func (s *Sling) New() *Sling {
 
 // Client sets the http Client used to do requests. If a nil client is given,
 // the http.DefaultClient will be used.
-func (s *Sling) Client(httpClient *http.Client) *Sling {
+func (orig *Sling) Client(httpClient *http.Client) *Sling {
+	s := orig.safely()
 	if httpClient == nil {
 		s.HttpClient = http.DefaultClient
 	} else {
@@ -95,37 +117,43 @@ func (s *Sling) Client(httpClient *http.Client) *Sling {
 // Method
 
 // Head sets the Sling method to HEAD and sets the given pathURL.
-func (s *Sling) Head(pathURL string) *Sling {
+func (orig *Sling) Head(pathURL string) *Sling {
+	s := orig.safely()
 	s.Method = HEAD
 	return s.Path(pathURL)
 }
 
 // Get sets the Sling method to GET and sets the given pathURL.
-func (s *Sling) Get(pathURL string) *Sling {
+func (orig *Sling) Get(pathURL string) *Sling {
+	s := orig.safely()
 	s.Method = GET
 	return s.Path(pathURL)
 }
 
 // Post sets the Sling method to POST and sets the given pathURL.
-func (s *Sling) Post(pathURL string) *Sling {
+func (orig *Sling) Post(pathURL string) *Sling {
+	s := orig.safely()
 	s.Method = POST
 	return s.Path(pathURL)
 }
 
 // Put sets the Sling method to PUT and sets the given pathURL.
-func (s *Sling) Put(pathURL string) *Sling {
+func (orig *Sling) Put(pathURL string) *Sling {
+	s := orig.safely()
 	s.Method = PUT
 	return s.Path(pathURL)
 }
 
 // Patch sets the Sling method to PATCH and sets the given pathURL.
-func (s *Sling) Patch(pathURL string) *Sling {
+func (orig *Sling) Patch(pathURL string) *Sling {
+	s := orig.safely()
 	s.Method = PATCH
 	return s.Path(pathURL)
 }
 
 // Delete sets the Sling method to DELETE and sets the given pathURL.
-func (s *Sling) Delete(pathURL string) *Sling {
+func (orig *Sling) Delete(pathURL string) *Sling {
+	s := orig.safely()
 	s.Method = DELETE
 	return s.Path(pathURL)
 }
@@ -134,14 +162,16 @@ func (s *Sling) Delete(pathURL string) *Sling {
 
 // Add adds the key, value pair in Headers, appending values for existing keys
 // to the key's values. Header keys are canonicalized.
-func (s *Sling) Add(key, value string) *Sling {
+func (orig *Sling) Add(key, value string) *Sling {
+	s := orig.safely()
 	s.Header.Add(key, value)
 	return s
 }
 
 // Set sets the key, value pair in Headers, replacing existing values
 // associated with key. Header keys are canonicalized.
-func (s *Sling) Set(key, value string) *Sling {
+func (orig *Sling) Set(key, value string) *Sling {
+	s := orig.safely()
 	s.Header.Set(key, value)
 	return s
 }
@@ -150,14 +180,16 @@ func (s *Sling) Set(key, value string) *Sling {
 
 // Base sets the RawUrl. If you intend to extend the url with Path,
 // baseUrl should be specified with a trailing slash.
-func (s *Sling) Base(rawURL string) *Sling {
+func (orig *Sling) Base(rawURL string) *Sling {
+	s := orig.safely()
 	s.RawUrl = rawURL
 	return s
 }
 
 // Path extends the RawUrl with the given path by resolving the reference to
 // an absolute URL. If parsing errors occur, the RawUrl is left unmodified.
-func (s *Sling) Path(path string) *Sling {
+func (orig *Sling) Path(path string) *Sling {
+	s := orig.safely()
 	baseURL, baseErr := url.Parse(s.RawUrl)
 	pathURL, pathErr := url.Parse(path)
 	if baseErr == nil && pathErr == nil {
@@ -172,7 +204,8 @@ func (s *Sling) Path(path string) *Sling {
 // new requests (see Request()).
 // The queryStruct argument should be a pointer to a url tagged struct. See
 // https://godoc.org/github.com/google/go-querystring/query for details.
-func (s *Sling) QueryStruct(queryStruct interface{}) *Sling {
+func (orig *Sling) QueryStruct(queryStruct interface{}) *Sling {
+	s := orig.safely()
 	if queryStruct != nil {
 		s.queryStructs = append(s.queryStructs, queryStruct)
 	}
@@ -185,7 +218,8 @@ func (s *Sling) QueryStruct(queryStruct interface{}) *Sling {
 // will be JSON encoded to set the Body on new requests (see Request()).
 // The jsonBody argument should be a pointer to a json tagged struct. See
 // https://golang.org/pkg/encoding/json/#MarshalIndent for details.
-func (s *Sling) JsonBody(jsonBody interface{}) *Sling {
+func (orig *Sling) JsonBody(jsonBody interface{}) *Sling {
+	s := orig.safely()
 	if jsonBody != nil {
 		s.jsonBody = jsonBody
 		s.Set(contentType, jsonContentType)
@@ -197,7 +231,8 @@ func (s *Sling) JsonBody(jsonBody interface{}) *Sling {
 // bodyStruct will be url encoded to set the Body on new requests.
 // The bodyStruct argument should be a pointer to a url tagged struct. See
 // https://godoc.org/github.com/google/go-querystring/query for details.
-func (s *Sling) BodyStruct(bodyStruct interface{}) *Sling {
+func (orig *Sling) BodyStruct(bodyStruct interface{}) *Sling {
+	s := orig.safely()
 	if bodyStruct != nil {
 		s.bodyStruct = bodyStruct
 		s.Set(contentType, formContentType)
@@ -210,7 +245,8 @@ func (s *Sling) BodyStruct(bodyStruct interface{}) *Sling {
 // Request returns a new http.Request created with the Sling properties.
 // Returns any errors parsing the RawUrl, encoding query structs, encoding
 // the body, or creating the http.Request.
-func (s *Sling) Request() (*http.Request, error) {
+func (orig *Sling) Request() (*http.Request, error) {
+	s := orig.safely()
 	reqURL, err := url.Parse(s.RawUrl)
 	if err != nil {
 		return nil, err
@@ -258,7 +294,8 @@ func addQueryStructs(reqURL *url.URL, queryStructs []interface{}) error {
 
 // getRequestBody returns the io.Reader which should be used as the body
 // of new Requests.
-func (s *Sling) getRequestBody() (body io.Reader, err error) {
+func (orig *Sling) getRequestBody() (body io.Reader, err error) {
+	s := orig.safely()
 	if s.jsonBody != nil && s.Header.Get(contentType) == jsonContentType {
 		body, err = encodeJSONBody(s.jsonBody)
 		if err != nil {
@@ -311,7 +348,8 @@ func addHeaders(req *http.Request, header http.Header) {
 
 // Receive creates a new HTTP request, sends it, and decodes the response into
 // the value pointed to by v. Receive is shorthand for calling Request and Do.
-func (s *Sling) Receive(v interface{}) (*http.Response, error) {
+func (orig *Sling) Receive(v interface{}) (*http.Response, error) {
+	s := orig.safely()
 	req, err := s.Request()
 	if err != nil {
 		return nil, err
@@ -324,7 +362,8 @@ func (s *Sling) Receive(v interface{}) (*http.Response, error) {
 // The Response and any error doing the request are returned.
 //
 // Note that non-2xx StatusCodes are valid responses, not errors.
-func (s *Sling) Do(req *http.Request, v interface{}) (*http.Response, error) {
+func (orig *Sling) Do(req *http.Request, v interface{}) (*http.Response, error) {
+	s := orig.safely()
 	resp, err := s.HttpClient.Do(req)
 	if err != nil {
 		return resp, err
