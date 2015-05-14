@@ -502,7 +502,7 @@ func TestAddQueryStructs(t *testing.T) {
 	}
 	for _, c := range cases {
 		reqURL, _ := url.Parse(c.rawurl)
-		addQueryStructs(reqURL, c.queryStructs)
+		addQueryStructs(reqURL, c.queryStructs, true)
 		if reqURL.String() != c.expected {
 			t.Errorf("expected %s, got %s", c.expected, reqURL.String())
 		}
