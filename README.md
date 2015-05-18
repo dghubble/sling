@@ -4,7 +4,7 @@
 
 Sling is a Go REST client library for creating and sending API requests.
 
-Slings store http Request properties to simplify sending requests and decoding responses. Check [usage](#usage) or the [examples](examples) to learn how to compose a Sling into your API client.
+Slings store HTTP Request properties to simplify sending requests and decoding responses. Check [usage](#usage) or the [examples](examples) to learn how to compose a Sling into your API client.
 
 ### Features
 
@@ -12,8 +12,8 @@ Slings store http Request properties to simplify sending requests and decoding r
 * Method Setters: Get/Post/Put/Patch/Delete/Head
 * Add and Set Request Headers
 * Encode url structs into URL query parameters
-* Encode url structs or json into the Request Body
-* Decode received JSON success responses
+* Encode json or a form into the Request Body
+* Receive JSON success or failure responses
 
 ## Install
 
@@ -42,13 +42,13 @@ users := base.New().Path("users/")
 statuses := base.New().Path("statuses/")
 ```
 
-Choose an http method, set query parameters, and send the request.
+Choose an HTTP method, set query parameters, and send the request.
 
 ```go
 statuses.New().Get("show.json").QueryStruct(params).Receive(tweet)
 ```
 
-The sections below provide more details about setting headers, query parameters, body data, and decoding a typed response after sending.
+The sections below provide more details about setting headers, query parameters, body data, and decoding a typed response.
 
 ### Headers
 
@@ -133,15 +133,11 @@ Requests will include an `application/x-www-form-urlencoded` Content-Type header
 
 ### Receive
 
-Define expected value structs. Use `Receive(v interface{})` to send a new Request that will automatically decode the response into the value.
+Define a JSON struct to decode a type from 2XX success responses. Use `ReceiveSuccess(successV interface{})` to send a new Request and decode the response body into `successV` if it succeeds.
 
 ```go
 // Github Issue (abbreviated)
 type Issue struct {
-    Id     int    `json:"id"`
-    Url    string `json:"url"`
-    Number int    `json:"number"`
-    State  string `json:"state"`
     Title  string `json:"title"`
     Body   string `json:"body"`
 }
@@ -149,9 +145,32 @@ type Issue struct {
 
 ```go
 issues := new([]Issue)
-resp, err := githubBase.New().Get(path).QueryStruct(params).Receive(issues)
+resp, err := githubBase.New().Get(path).QueryStruct(params).ReceiveSuccess(issues)
 fmt.Println(issues, resp, err)
 ```
+
+Most APIs return failure responses with JSON error details. To decode these, define success and failure JSON structs. Use `Receive(successV, failureV interface{})` to send a new Request that will automatically decode the response into the `successV` for 2XX responses or into `failureV` for non-2XX responses.
+
+```go
+type GithubError struct {
+    Message string `json:"message"`
+    Errors  []struct {
+        Resource string `json:"resource"`
+        Field    string `json:"field"`
+        Code     string `json:"code"`
+    } `json:"errors"`
+    DocumentationURL string `json:"documentation_url"`
+}
+```
+
+```go
+issues := new([]Issue)
+githubError := new(GithubError)
+resp, err := githubBase.New().Get(path).QueryStruct(params).Receive(issues, githubError)
+fmt.Println(issues, githubError, resp, err)
+```
+
+Pass a nil `successV` or `failureV` argument to skip JSON decoding into that value.
 
 ### Build an API
 
@@ -171,14 +190,14 @@ func NewIssueService(httpClient *http.Client) *IssueService {
 func (s *IssueService) Create(owner, repo string, issueBody *IssueRequest) (*Issue, *http.Response, error) {
     issue := new(Issue)
     path := fmt.Sprintf("repos/%s/%s/issues", owner, repo)
-    resp, err := s.sling.New().Post(path).JsonBody(issueBody).Receive(issue)
+    resp, err := s.sling.New().Post(path).JsonBody(issueBody).ReceiveSuccess(issue)
     return issue, resp, err
 }
 
 func (srvc IssueService) List(owner, repo string, params *IssueParams) ([]Issue, *http.Response, error) {
     var issues []Issue
     path := fmt.Sprintf("repos/%s/%s/issues", owner, repo)
-    resp, err := srvc.sling.New().Get(path).QueryStruct(params).Receive(&issues)
+    resp, err := srvc.sling.New().Get(path).QueryStruct(params).ReceiveSuccess(&issues)
     return *issues, resp, err
 }
 ```
@@ -188,10 +207,6 @@ func (srvc IssueService) List(owner, repo string, params *IssueParams) ([]Issue,
 * [dghubble/go-twitter](https://github.com/dghubble/go-twitter)
 
 Create a Pull Request to add a link to your own API.
-
-## Roadmap
-
-* Receive custom error structs
 
 ## Motivation
 

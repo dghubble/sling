@@ -518,7 +518,7 @@ func TestDo(t *testing.T) {
 	sling := New().Client(client)
 	req, _ := http.NewRequest("GET", server.URL, nil)
 	var model FakeModel
-	resp, err := sling.Do(req, &model)
+	resp, err := sling.Do(req, &model, nil)
 
 	if err != nil {
 		t.Errorf("expected nil, got %v", err)
@@ -544,7 +544,7 @@ func TestDo_nilV(t *testing.T) {
 
 	sling := New().Client(client)
 	req, _ := http.NewRequest("GET", server.URL, nil)
-	resp, err := sling.Do(req, nil)
+	resp, err := sling.Do(req, nil, nil)
 
 	if err != nil {
 		t.Errorf("expected nil, got %v", err)
