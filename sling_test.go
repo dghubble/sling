@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"net/http"
 	"net/http/httptest"
@@ -509,26 +508,36 @@ func TestAddQueryStructs(t *testing.T) {
 	}
 }
 
-func TestDo(t *testing.T) {
-	expectedText := "Some text"
-	var expectedFavoriteCount int64 = 24
-	client, server := mockServer(`{"text":"Some text","favorite_count":24}`)
+// Sending
+
+type APIError struct {
+	Message string `json:"message"`
+	Code    int    `json:"code"`
+}
+
+func TestDo_onSuccess(t *testing.T) {
+	const expectedText = "Some text"
+	const expectedFavoriteCount int64 = 24
+
+	client, mux, server := testServer()
 	defer server.Close()
+	mux.HandleFunc("/success", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"text": "Some text", "favorite_count": 24}`)
+	})
 
 	sling := New().Client(client)
-	req, _ := http.NewRequest("GET", server.URL, nil)
-	var model FakeModel
-	resp, err := sling.Do(req, &model, nil)
+	req, _ := http.NewRequest("GET", "http://example.com/success", nil)
+
+	model := new(FakeModel)
+	apiError := new(APIError)
+	resp, err := sling.Do(req, model, apiError)
 
 	if err != nil {
 		t.Errorf("expected nil, got %v", err)
 	}
 	if resp.StatusCode != 200 {
 		t.Errorf("expected %d, got %d", 200, resp.StatusCode)
-	}
-	expectedReadError := "http: read on closed response body"
-	if _, err = ioutil.ReadAll(resp.Body); err == nil || err.Error() != expectedReadError {
-		t.Errorf("expected %s, got %v", expectedReadError, err)
 	}
 	if model.Text != expectedText {
 		t.Errorf("expected %s, got %s", expectedText, model.Text)
@@ -538,13 +547,19 @@ func TestDo(t *testing.T) {
 	}
 }
 
-func TestDo_nilV(t *testing.T) {
-	client, server := mockServer("")
+func TestDo_onSuccessWithNilValue(t *testing.T) {
+	client, mux, server := testServer()
 	defer server.Close()
+	mux.HandleFunc("/success", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"text": "Some text", "favorite_count": 24}`)
+	})
 
 	sling := New().Client(client)
-	req, _ := http.NewRequest("GET", server.URL, nil)
-	resp, err := sling.Do(req, nil, nil)
+	req, _ := http.NewRequest("GET", "http://example.com/success", nil)
+
+	apiError := new(APIError)
+	resp, err := sling.Do(req, nil, apiError)
 
 	if err != nil {
 		t.Errorf("expected nil, got %v", err)
@@ -552,27 +567,85 @@ func TestDo_nilV(t *testing.T) {
 	if resp.StatusCode != 200 {
 		t.Errorf("expected %d, got %d", 200, resp.StatusCode)
 	}
-	expectedReadError := "http: read on closed response body"
-	if _, err = ioutil.ReadAll(resp.Body); err == nil || err.Error() != expectedReadError {
-		t.Errorf("expected %s, got %v", expectedReadError, err)
+	expected := &APIError{}
+	if !reflect.DeepEqual(expected, apiError) {
+		t.Errorf("failureV should not be populated, exepcted %v, got %v", expected, apiError)
+	}
+}
+
+func TestDo_onFailure(t *testing.T) {
+	const expectedMessage = "Invalid argument"
+	const expectedCode int = 215
+
+	client, mux, server := testServer()
+	defer server.Close()
+	mux.HandleFunc("/failure", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(400)
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"message": "Invalid argument", "code": 215}`)
+	})
+
+	sling := New().Client(client)
+	req, _ := http.NewRequest("GET", "http://example.com/failure", nil)
+
+	model := new(FakeModel)
+	apiError := new(APIError)
+	resp, err := sling.Do(req, model, apiError)
+
+	if err != nil {
+		t.Errorf("expected nil, got %v", err)
+	}
+	if resp.StatusCode != 400 {
+		t.Errorf("expected %d, got %d", 400, resp.StatusCode)
+	}
+	if apiError.Message != expectedMessage {
+		t.Errorf("expected %s, got %s", expectedMessage, apiError.Message)
+	}
+	if apiError.Code != expectedCode {
+		t.Errorf("expected %d, got %d", expectedCode, apiError.Code)
+	}
+}
+
+func TestDo_onFailureWithNilValue(t *testing.T) {
+	client, mux, server := testServer()
+	defer server.Close()
+	mux.HandleFunc("/failure", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(420)
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"message": "Enhance your calm", "code": 88}`)
+	})
+
+	sling := New().Client(client)
+	req, _ := http.NewRequest("GET", "http://example.com/failure", nil)
+
+	model := new(FakeModel)
+	resp, err := sling.Do(req, model, nil)
+
+	if err != nil {
+		t.Errorf("expected nil, got %v", err)
+	}
+	if resp.StatusCode != 420 {
+		t.Errorf("expected %d, got %d", 420, resp.StatusCode)
+	}
+	expected := &FakeModel{}
+	if !reflect.DeepEqual(expected, model) {
+		t.Errorf("successV should not be populated, exepcted %v, got %v", expected, model)
 	}
 }
 
 // Testing Utils
 
-// mockServer returns an httptest.Server which always returns Responses with
-// the given string as the Body with Content-Type application/json.
-// The caller must close the test server.
-func mockServer(body string) (*http.Client, *httptest.Server) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintln(w, body)
-	}))
+// testServer returns an http Client, ServeMux, and Server. The client proxies
+// requests to the server and handlers can be registered on the mux to handle
+// requests. The caller must close the test server.
+func testServer() (*http.Client, *http.ServeMux, *httptest.Server) {
+	mux := http.NewServeMux()
+	server := httptest.NewServer(mux)
 	transport := &http.Transport{
 		Proxy: func(req *http.Request) (*url.URL, error) {
 			return url.Parse(server.URL)
 		},
 	}
 	client := &http.Client{Transport: transport}
-	return client, server
+	return client, mux, server
 }
