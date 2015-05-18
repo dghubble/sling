@@ -633,6 +633,84 @@ func TestDo_onFailureWithNilValue(t *testing.T) {
 	}
 }
 
+func TestReceive_success(t *testing.T) {
+	client, mux, server := testServer()
+	defer server.Close()
+	mux.HandleFunc("/foo/submit", func(w http.ResponseWriter, r *http.Request) {
+		assertMethod(t, "POST", r)
+		assertQuery(t, map[string]string{"kind_name": "vanilla", "count": "11"}, r)
+		assertPostForm(t, map[string]string{"kind_name": "vanilla", "count": "11"}, r)
+		fmt.Fprintf(w, `{"text": "Some text", "favorite_count": 24}`)
+	})
+
+	endpoint := New().Client(client).Base("http://example.com/").Path("foo/").Post("submit")
+	// encode url-tagged struct in query params and as post body for testing purposes
+	params := FakeParams{KindName: "vanilla", Count: 11}
+	model := new(FakeModel)
+	apiError := new(APIError)
+	resp, err := endpoint.New().QueryStruct(params).BodyStruct(params).Receive(model, apiError)
+
+	if err != nil {
+		t.Errorf("expected nil, got %v", err)
+	}
+	if resp.StatusCode != 200 {
+		t.Errorf("expected %d, got %d", 200, resp.StatusCode)
+	}
+	expectedModel := &FakeModel{Text: "Some text", FavoriteCount: 24}
+	if !reflect.DeepEqual(expectedModel, model) {
+		t.Errorf("expected %v, got %v", expectedModel, model)
+	}
+	expectedAPIError := &APIError{}
+	if !reflect.DeepEqual(expectedAPIError, apiError) {
+		t.Errorf("failureV should be zero valued, exepcted %v, got %v", expectedAPIError, apiError)
+	}
+}
+
+func TestReceive_failure(t *testing.T) {
+	client, mux, server := testServer()
+	defer server.Close()
+	mux.HandleFunc("/foo/submit", func(w http.ResponseWriter, r *http.Request) {
+		assertMethod(t, "POST", r)
+		assertQuery(t, map[string]string{"kind_name": "vanilla", "count": "11"}, r)
+		assertPostForm(t, map[string]string{"kind_name": "vanilla", "count": "11"}, r)
+		w.WriteHeader(429)
+		fmt.Fprintf(w, `{"message": "Rate limit exceeded", "code": 88}`)
+	})
+
+	endpoint := New().Client(client).Base("http://example.com/").Path("foo/").Post("submit")
+	// encode url-tagged struct in query params and as post body for testing purposes
+	params := FakeParams{KindName: "vanilla", Count: 11}
+	model := new(FakeModel)
+	apiError := new(APIError)
+	resp, err := endpoint.New().QueryStruct(params).BodyStruct(params).Receive(model, apiError)
+
+	if err != nil {
+		t.Errorf("expected nil, got %v", err)
+	}
+	if resp.StatusCode != 429 {
+		t.Errorf("expected %d, got %d", 429, resp.StatusCode)
+	}
+	expectedAPIError := &APIError{Message: "Rate limit exceeded", Code: 88}
+	if !reflect.DeepEqual(expectedAPIError, apiError) {
+		t.Errorf("expected %v, got %v", expectedAPIError, apiError)
+	}
+	expectedModel := &FakeModel{}
+	if !reflect.DeepEqual(expectedModel, model) {
+		t.Errorf("successV should not be zero valued, expected %v, got %v", expectedModel, model)
+	}
+}
+
+func TestReceive_errorCreatingRequest(t *testing.T) {
+	expectedErr := errors.New("json: unsupported value: +Inf")
+	resp, err := New().JsonBody(FakeModel{Temperature: math.Inf(1)}).Receive(nil, nil)
+	if err == nil || err.Error() != expectedErr.Error() {
+		t.Errorf("expected %v, got %v", expectedErr, err)
+	}
+	if resp != nil {
+		t.Errorf("expected nil resp, got %v", resp)
+	}
+}
+
 // Testing Utils
 
 // testServer returns an http Client, ServeMux, and Server. The client proxies
@@ -648,4 +726,35 @@ func testServer() (*http.Client, *http.ServeMux, *httptest.Server) {
 	}
 	client := &http.Client{Transport: transport}
 	return client, mux, server
+}
+
+func assertMethod(t *testing.T, expectedMethod string, req *http.Request) {
+	if actualMethod := req.Method; actualMethod != expectedMethod {
+		t.Errorf("expected method %s, got %s", expectedMethod, actualMethod)
+	}
+}
+
+// assertQuery tests that the Request has the expected url query key/val pairs
+func assertQuery(t *testing.T, expected map[string]string, req *http.Request) {
+	queryValues := req.URL.Query() // net/url Values is a map[string][]string
+	expectedValues := url.Values{}
+	for key, value := range expected {
+		expectedValues.Add(key, value)
+	}
+	if !reflect.DeepEqual(expectedValues, queryValues) {
+		t.Errorf("expected parameters %v, got %v", expected, req.URL.RawQuery)
+	}
+}
+
+// assertPostForm tests that the Request has the expected key values pairs url
+// encoded in its Body
+func assertPostForm(t *testing.T, expected map[string]string, req *http.Request) {
+	req.ParseForm() // parses request Body to put url.Values in r.Form/r.PostForm
+	expectedValues := url.Values{}
+	for key, value := range expected {
+		expectedValues.Add(key, value)
+	}
+	if !reflect.DeepEqual(expectedValues, req.PostForm) {
+		t.Errorf("expected parameters %v, got %v", expected, req.PostForm)
+	}
 }
