@@ -102,7 +102,7 @@ func (s *IssueService) Create(owner, repo string, issueBody *IssueRequest) (*Iss
 	issue := new(Issue)
 	githubError := new(GithubError)
 	path := fmt.Sprintf("repos/%s/%s/issues", owner, repo)
-	resp, err := s.sling.New().Post(path).JsonBody(issueBody).Receive(issue, githubError)
+	resp, err := s.sling.New().Post(path).BodyJSON(issueBody).Receive(issue, githubError)
 	if err == nil {
 		err = githubError
 	}

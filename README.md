@@ -11,8 +11,8 @@ Slings store HTTP Request properties to simplify sending requests and decoding r
 * Base/Path - path extend a Sling for different endpoints
 * Method Setters: Get/Post/Put/Patch/Delete/Head
 * Add and Set Request Headers
-* Encode url structs into URL query parameters
-* Encode json or a form into the Request Body
+* Encode structs into URL query parameters
+* Encode a form or JSON into the Request Body
 * Receive JSON success or failure responses
 
 ## Install
@@ -85,9 +85,9 @@ req, err := githubBase.New().Get(path).QueryStruct(params).Request()
 
 ### Body
 
-#### JsonBody
+#### Json Body
 
-Make a Sling include JSON in the Body of its Requests using `JsonBody`.
+Make a Sling include JSON in the Body of its Requests using `BodyJSON`.
 
 ```go
 type IssueRequest struct {
@@ -107,14 +107,14 @@ body := &IssueRequest{
     Title: "Test title",
     Body:  "Some issue",
 }
-req, err := githubBase.New().Post(path).JsonBody(body).Request()
+req, err := githubBase.New().Post(path).BodyJSON(body).Request()
 ```
 
 Requests will include an `application/json` Content-Type header.
 
-#### BodyStruct
+#### Form Body
 
-Make a Sling include a url-tagged struct as a url-encoded form in the Body of its Requests using `BodyStruct`.
+Make a Sling include a url-tagged struct as a url-encoded form in the Body of its Requests using `BodyForm`.
 
 ```go
 type StatusUpdateParams struct {
@@ -126,7 +126,7 @@ type StatusUpdateParams struct {
 
 ```go
 tweetParams := &StatusUpdateParams{Status: "writing some Go"}
-req, err := twitterBase.New().Post(path).BodyStruct(tweetParams).Request()
+req, err := twitterBase.New().Post(path).BodyForm(tweetParams).Request()
 ```
 
 Requests will include an `application/x-www-form-urlencoded` Content-Type header.

@@ -36,8 +36,8 @@ var modelA = FakeModel{Text: "note", FavoriteCount: 12}
 
 func TestNew(t *testing.T) {
 	sling := New()
-	if sling.HttpClient != http.DefaultClient {
-		t.Errorf("expected %v, got %v", http.DefaultClient, sling.HttpClient)
+	if sling.HTTPClient != http.DefaultClient {
+		t.Errorf("expected %v, got %v", http.DefaultClient, sling.HTTPClient)
 	}
 	if sling.Header == nil {
 		t.Errorf("Header map not initialized with make")
@@ -49,30 +49,30 @@ func TestNew(t *testing.T) {
 
 func TestSlingNew(t *testing.T) {
 	cases := []*Sling{
-		&Sling{HttpClient: &http.Client{}, Method: "GET", RawUrl: "http://example.com"},
-		&Sling{HttpClient: nil, Method: "", RawUrl: "http://example.com"},
+		&Sling{HTTPClient: &http.Client{}, method: "GET", rawURL: "http://example.com"},
+		&Sling{HTTPClient: nil, method: "", rawURL: "http://example.com"},
 		&Sling{queryStructs: make([]interface{}, 0)},
 		&Sling{queryStructs: []interface{}{paramsA}},
 		&Sling{queryStructs: []interface{}{paramsA, paramsB}},
-		&Sling{jsonBody: &FakeModel{Text: "a"}},
-		&Sling{jsonBody: FakeModel{Text: "a"}},
-		&Sling{jsonBody: nil},
+		&Sling{bodyJSON: &FakeModel{Text: "a"}},
+		&Sling{bodyJSON: FakeModel{Text: "a"}},
+		&Sling{bodyJSON: nil},
 		New().Add("Content-Type", "application/json"),
 		New().Add("A", "B").Add("a", "c").New(),
 		New().Add("A", "B").New().Add("a", "c"),
-		New().BodyStruct(paramsB),
-		New().BodyStruct(paramsB).New(),
+		New().BodyForm(paramsB),
+		New().BodyForm(paramsB).New(),
 	}
 	for _, sling := range cases {
 		child := sling.New()
-		if child.HttpClient != sling.HttpClient {
-			t.Errorf("expected %p, got %p", sling.HttpClient, child.HttpClient)
+		if child.HTTPClient != sling.HTTPClient {
+			t.Errorf("expected %p, got %p", sling.HTTPClient, child.HTTPClient)
 		}
-		if child.Method != sling.Method {
-			t.Errorf("expected %s, got %s", sling.Method, child.Method)
+		if child.method != sling.method {
+			t.Errorf("expected %s, got %s", sling.method, child.method)
 		}
-		if child.RawUrl != sling.RawUrl {
-			t.Errorf("expected %s, got %s", sling.RawUrl, child.RawUrl)
+		if child.rawURL != sling.rawURL {
+			t.Errorf("expected %s, got %s", sling.rawURL, child.rawURL)
 		}
 		// Header should be a copy of parent Sling Header. For example, calling
 		// baseSling.Add("k","v") should not mutate previously created child Slings
@@ -94,13 +94,13 @@ func TestSlingNew(t *testing.T) {
 				t.Errorf("child.queryStructs was a re-slice, expected slice with copied contents")
 			}
 		}
-		// jsonBody should be copied
-		if child.jsonBody != sling.jsonBody {
-			t.Errorf("expected %v, got %v", sling.jsonBody, child.jsonBody)
+		// bodyJSON should be copied
+		if child.bodyJSON != sling.bodyJSON {
+			t.Errorf("expected %v, got %v", sling.bodyJSON, child.bodyJSON)
 		}
-		// bodyStruct should be copied
-		if child.bodyStruct != sling.bodyStruct {
-			t.Errorf("expected %v, got %v", sling.bodyStruct, child.bodyStruct)
+		// bodyForm should be copied
+		if child.bodyForm != sling.bodyForm {
+			t.Errorf("expected %v, got %v", sling.bodyForm, child.bodyForm)
 		}
 	}
 }
@@ -117,8 +117,8 @@ func TestClientSetter(t *testing.T) {
 	for _, c := range cases {
 		sling := New()
 		sling.Client(c.input)
-		if sling.HttpClient != c.expected {
-			t.Errorf("expected %v, got %v", c.expected, sling.HttpClient)
+		if sling.HTTPClient != c.expected {
+			t.Errorf("expected %v, got %v", c.expected, sling.HTTPClient)
 		}
 	}
 }
@@ -127,8 +127,8 @@ func TestBaseSetter(t *testing.T) {
 	cases := []string{"http://a.io/", "http://b.io", "/path", "path", ""}
 	for _, base := range cases {
 		sling := New().Base(base)
-		if sling.RawUrl != base {
-			t.Errorf("expected %s, got %s", base, sling.RawUrl)
+		if sling.rawURL != base {
+			t.Errorf("expected %s, got %s", base, sling.rawURL)
 		}
 	}
 }
@@ -144,7 +144,7 @@ func TestPathSetter(t *testing.T) {
 		{"http://a.io", "foo", "http://a.io/foo"},
 		{"http://a.io", "/foo", "http://a.io/foo"},
 		{"http://a.io/foo/", "bar", "http://a.io/foo/bar"},
-		// rawUrl should end in trailing slash if it is to be Path extended
+		// rawURL should end in trailing slash if it is to be Path extended
 		{"http://a.io/foo", "bar", "http://a.io/bar"},
 		{"http://a.io/foo", "/bar", "http://a.io/bar"},
 		// path extension is absolute
@@ -159,8 +159,8 @@ func TestPathSetter(t *testing.T) {
 	}
 	for _, c := range cases {
 		sling := New().Base(c.rawURL).Path(c.path)
-		if sling.RawUrl != c.expectedRawURL {
-			t.Errorf("expected %s, got %s", c.expectedRawURL, sling.RawUrl)
+		if sling.rawURL != c.expectedRawURL {
+			t.Errorf("expected %s, got %s", c.expectedRawURL, sling.rawURL)
 		}
 	}
 }
@@ -170,16 +170,16 @@ func TestMethodSetters(t *testing.T) {
 		sling          *Sling
 		expectedMethod string
 	}{
-		{New().Head("http://a.io"), HEAD},
-		{New().Get("http://a.io"), GET},
-		{New().Post("http://a.io"), POST},
-		{New().Put("http://a.io"), PUT},
-		{New().Patch("http://a.io"), PATCH},
-		{New().Delete("http://a.io"), DELETE},
+		{New().Head("http://a.io"), "HEAD"},
+		{New().Get("http://a.io"), "GET"},
+		{New().Post("http://a.io"), "POST"},
+		{New().Put("http://a.io"), "PUT"},
+		{New().Patch("http://a.io"), "PATCH"},
+		{New().Delete("http://a.io"), "DELETE"},
 	}
 	for _, c := range cases {
-		if c.sling.Method != c.expectedMethod {
-			t.Errorf("expected method %s, got %s", c.expectedMethod, c.sling.Method)
+		if c.sling.method != c.expectedMethod {
+			t.Errorf("expected method %s, got %s", c.expectedMethod, c.sling.method)
 		}
 	}
 }
@@ -258,28 +258,28 @@ func TestQueryStructSetter(t *testing.T) {
 	}
 }
 
-func TestJsonBodySetter(t *testing.T) {
+func TestBodyJSONSetter(t *testing.T) {
 	fakeModel := &FakeModel{}
 	cases := []struct {
 		initial  interface{}
 		input    interface{}
 		expected interface{}
 	}{
-		// json tagged struct is set as jsonBody
+		// json tagged struct is set as bodyJSON
 		{nil, fakeModel, fakeModel},
-		// nil argument to jsonBody does not replace existing jsonBody
+		// nil argument to bodyJSON does not replace existing bodyJSON
 		{fakeModel, nil, fakeModel},
-		// nil jsonBody remains nil
+		// nil bodyJSON remains nil
 		{nil, nil, nil},
 	}
 	for _, c := range cases {
 		sling := New()
-		sling.jsonBody = c.initial
-		sling.JsonBody(c.input)
-		if sling.jsonBody != c.expected {
-			t.Errorf("expected %v, got %v", c.expected, sling.jsonBody)
+		sling.bodyJSON = c.initial
+		sling.BodyJSON(c.input)
+		if sling.bodyJSON != c.expected {
+			t.Errorf("expected %v, got %v", c.expected, sling.bodyJSON)
 		}
-		// Header Content-Type should be application/json if jsonBody arg was non-nil
+		// Header Content-Type should be application/json if bodyJSON arg was non-nil
 		if c.input != nil && sling.Header.Get(contentType) != jsonContentType {
 			t.Errorf("Incorrect or missing header, expected %s, got %s", jsonContentType, sling.Header.Get(contentType))
 		} else if c.input == nil && sling.Header.Get(contentType) != "" {
@@ -288,7 +288,7 @@ func TestJsonBodySetter(t *testing.T) {
 	}
 }
 
-func TestBodyStructSetter(t *testing.T) {
+func TestBodyFormSetter(t *testing.T) {
 	cases := []struct {
 		initial  interface{}
 		input    interface{}
@@ -303,10 +303,10 @@ func TestBodyStructSetter(t *testing.T) {
 	}
 	for _, c := range cases {
 		sling := New()
-		sling.bodyStruct = c.initial
-		sling.BodyStruct(c.input)
-		if sling.bodyStruct != c.expected {
-			t.Errorf("expected %v, got %v", c.expected, sling.bodyStruct)
+		sling.bodyForm = c.initial
+		sling.BodyForm(c.input)
+		if sling.bodyForm != c.expected {
+			t.Errorf("expected %v, got %v", c.expected, sling.bodyForm)
 		}
 		// Content-Type should be application/x-www-form-urlencoded if bodyStruct was non-nil
 		if c.input != nil && sling.Header.Get(contentType) != formContentType {
@@ -327,23 +327,23 @@ func TestRequest_urlAndMethod(t *testing.T) {
 	}{
 		{New().Base("http://a.io"), "", "http://a.io", nil},
 		{New().Path("http://a.io"), "", "http://a.io", nil},
-		{New().Get("http://a.io"), GET, "http://a.io", nil},
-		{New().Put("http://a.io"), PUT, "http://a.io", nil},
+		{New().Get("http://a.io"), "GET", "http://a.io", nil},
+		{New().Put("http://a.io"), "PUT", "http://a.io", nil},
 		{New().Base("http://a.io/").Path("foo"), "", "http://a.io/foo", nil},
-		{New().Base("http://a.io/").Post("foo"), POST, "http://a.io/foo", nil},
+		{New().Base("http://a.io/").Post("foo"), "POST", "http://a.io/foo", nil},
 		// if relative path is an absolute url, base is ignored
 		{New().Base("http://a.io").Path("http://b.io"), "", "http://b.io", nil},
 		{New().Path("http://a.io").Path("http://b.io"), "", "http://b.io", nil},
 		// last method setter takes priority
-		{New().Get("http://b.io").Post("http://a.io"), POST, "http://a.io", nil},
-		{New().Post("http://a.io/").Put("foo/").Delete("bar"), DELETE, "http://a.io/foo/bar", nil},
+		{New().Get("http://b.io").Post("http://a.io"), "POST", "http://a.io", nil},
+		{New().Post("http://a.io/").Put("foo/").Delete("bar"), "DELETE", "http://a.io/foo/bar", nil},
 		// last Base setter takes priority
 		{New().Base("http://a.io").Base("http://b.io"), "", "http://b.io", nil},
 		// Path setters are additive
 		{New().Base("http://a.io/").Path("foo/").Path("bar"), "", "http://a.io/foo/bar", nil},
 		{New().Path("http://a.io/").Path("foo/").Path("bar"), "", "http://a.io/foo/bar", nil},
 		// removes extra '/' between base and ref url
-		{New().Base("http://a.io/").Get("/foo"), GET, "http://a.io/foo", nil},
+		{New().Base("http://a.io/").Get("/foo"), "GET", "http://a.io/foo", nil},
 	}
 	for _, c := range cases {
 		req, err := c.sling.Request()
@@ -384,24 +384,24 @@ func TestRequest_body(t *testing.T) {
 		expectedBody        string // expected Body io.Reader as a string
 		expectedContentType string
 	}{
-		// JsonBody
-		{New().JsonBody(modelA), "{\"text\":\"note\",\"favorite_count\":12}\n", jsonContentType},
-		{New().JsonBody(&modelA), "{\"text\":\"note\",\"favorite_count\":12}\n", jsonContentType},
-		{New().JsonBody(&FakeModel{}), "{}\n", jsonContentType},
-		{New().JsonBody(FakeModel{}), "{}\n", jsonContentType},
-		// JsonBody overrides existing values
-		{New().JsonBody(&FakeModel{}).JsonBody(&FakeModel{Text: "msg"}), "{\"text\":\"msg\"}\n", jsonContentType},
-		// BodyStruct (form)
-		{New().BodyStruct(paramsA), "limit=30", formContentType},
-		{New().BodyStruct(paramsB), "count=25&kind_name=recent", formContentType},
-		{New().BodyStruct(&paramsB), "count=25&kind_name=recent", formContentType},
-		// BodyStruct overrides existing values
-		{New().BodyStruct(paramsA).New().BodyStruct(paramsB), "count=25&kind_name=recent", formContentType},
-		// Mixture of JsonBody and BodyStruct prefers body setter called last with a non-nil argument
-		{New().BodyStruct(paramsB).New().JsonBody(modelA), "{\"text\":\"note\",\"favorite_count\":12}\n", jsonContentType},
-		{New().JsonBody(modelA).New().BodyStruct(paramsB), "count=25&kind_name=recent", formContentType},
-		{New().BodyStruct(paramsB).New().JsonBody(nil), "count=25&kind_name=recent", formContentType},
-		{New().JsonBody(modelA).New().BodyStruct(nil), "{\"text\":\"note\",\"favorite_count\":12}\n", jsonContentType},
+		// BodyJSON
+		{New().BodyJSON(modelA), "{\"text\":\"note\",\"favorite_count\":12}\n", jsonContentType},
+		{New().BodyJSON(&modelA), "{\"text\":\"note\",\"favorite_count\":12}\n", jsonContentType},
+		{New().BodyJSON(&FakeModel{}), "{}\n", jsonContentType},
+		{New().BodyJSON(FakeModel{}), "{}\n", jsonContentType},
+		// BodyJSON overrides existing values
+		{New().BodyJSON(&FakeModel{}).BodyJSON(&FakeModel{Text: "msg"}), "{\"text\":\"msg\"}\n", jsonContentType},
+		// BodyForm
+		{New().BodyForm(paramsA), "limit=30", formContentType},
+		{New().BodyForm(paramsB), "count=25&kind_name=recent", formContentType},
+		{New().BodyForm(&paramsB), "count=25&kind_name=recent", formContentType},
+		// BodyForm overrides existing values
+		{New().BodyForm(paramsA).New().BodyForm(paramsB), "count=25&kind_name=recent", formContentType},
+		// Mixture of BodyJSON and BodyForm prefers body setter called last with a non-nil argument
+		{New().BodyForm(paramsB).New().BodyJSON(modelA), "{\"text\":\"note\",\"favorite_count\":12}\n", jsonContentType},
+		{New().BodyJSON(modelA).New().BodyForm(paramsB), "count=25&kind_name=recent", formContentType},
+		{New().BodyForm(paramsB).New().BodyJSON(nil), "count=25&kind_name=recent", formContentType},
+		{New().BodyJSON(modelA).New().BodyForm(nil), "{\"text\":\"note\",\"favorite_count\":12}\n", jsonContentType},
 	}
 	for _, c := range cases {
 		req, _ := c.sling.Request()
@@ -419,18 +419,18 @@ func TestRequest_body(t *testing.T) {
 }
 
 func TestRequest_bodyNoData(t *testing.T) {
-	// test that Body is left nil when no jsonBody or bodyStruct set
+	// test that Body is left nil when no bodyJSON or bodyStruct set
 	slings := []*Sling{
 		New(),
-		New().JsonBody(nil),
-		New().BodyStruct(nil),
+		New().BodyJSON(nil),
+		New().BodyForm(nil),
 	}
 	for _, sling := range slings {
 		req, _ := sling.Request()
 		if req.Body != nil {
 			t.Errorf("expected nil Request.Body, got %v", req.Body)
 		}
-		// Header Content-Type should not be set when jsonBody argument was nil or never called
+		// Header Content-Type should not be set when bodyJSON argument was nil or never called
 		if actualHeader := req.Header.Get(contentType); actualHeader != "" {
 			t.Errorf("did not expect a Content-Type header, got %s", actualHeader)
 		}
@@ -443,7 +443,7 @@ func TestRequest_bodyEncodeErrors(t *testing.T) {
 		expectedErr error
 	}{
 		// check that Encode errors are propagated, illegal JSON field
-		{New().JsonBody(FakeModel{Temperature: math.Inf(1)}), errors.New("json: unsupported value: +Inf")},
+		{New().BodyJSON(FakeModel{Temperature: math.Inf(1)}), errors.New("json: unsupported value: +Inf")},
 	}
 	for _, c := range cases {
 		req, err := c.sling.Request()
@@ -496,7 +496,7 @@ func TestAddQueryStructs(t *testing.T) {
 		{"http://a.io", []interface{}{paramsA}, "http://a.io?limit=30"},
 		{"http://a.io", []interface{}{paramsA, paramsA}, "http://a.io?limit=30&limit=30"},
 		{"http://a.io", []interface{}{paramsA, paramsB}, "http://a.io?count=25&kind_name=recent&limit=30"},
-		// don't blow away query values on the RawUrl (parsed into RawQuery)
+		// don't blow away query values on the rawURL (parsed into RawQuery)
 		{"http://a.io?initial=7", []interface{}{paramsA}, "http://a.io?initial=7&limit=30"},
 	}
 	for _, c := range cases {
@@ -648,7 +648,7 @@ func TestReceive_success(t *testing.T) {
 	params := FakeParams{KindName: "vanilla", Count: 11}
 	model := new(FakeModel)
 	apiError := new(APIError)
-	resp, err := endpoint.New().QueryStruct(params).BodyStruct(params).Receive(model, apiError)
+	resp, err := endpoint.New().QueryStruct(params).BodyForm(params).Receive(model, apiError)
 
 	if err != nil {
 		t.Errorf("expected nil, got %v", err)
@@ -682,7 +682,7 @@ func TestReceive_failure(t *testing.T) {
 	params := FakeParams{KindName: "vanilla", Count: 11}
 	model := new(FakeModel)
 	apiError := new(APIError)
-	resp, err := endpoint.New().QueryStruct(params).BodyStruct(params).Receive(model, apiError)
+	resp, err := endpoint.New().QueryStruct(params).BodyForm(params).Receive(model, apiError)
 
 	if err != nil {
 		t.Errorf("expected nil, got %v", err)
@@ -702,7 +702,7 @@ func TestReceive_failure(t *testing.T) {
 
 func TestReceive_errorCreatingRequest(t *testing.T) {
 	expectedErr := errors.New("json: unsupported value: +Inf")
-	resp, err := New().JsonBody(FakeModel{Temperature: math.Inf(1)}).Receive(nil, nil)
+	resp, err := New().BodyJSON(FakeModel{Temperature: math.Inf(1)}).Receive(nil, nil)
 	if err == nil || err.Error() != expectedErr.Error() {
 		t.Errorf("expected %v, got %v", expectedErr, err)
 	}
