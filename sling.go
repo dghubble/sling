@@ -3,11 +3,13 @@ package sling
 import (
 	"bytes"
 	"encoding/json"
-	goquery "github.com/google/go-querystring/query"
 	"io"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
+
+	goquery "github.com/google/go-querystring/query"
 )
 
 const (
@@ -32,6 +34,8 @@ type Sling struct {
 	RawUrl string
 	// stores key-values pairs to add to request's Headers
 	Header http.Header
+	// elective querystruct url encoding
+	EncodeQueryStructs bool
 	// url tagged query structs
 	queryStructs []interface{}
 	// json tagged body struct
@@ -43,9 +47,10 @@ type Sling struct {
 // New returns a new Sling with an http DefaultClient.
 func New() *Sling {
 	return &Sling{
-		HttpClient:   http.DefaultClient,
-		Header:       make(http.Header),
-		queryStructs: make([]interface{}, 0),
+		HttpClient:         http.DefaultClient,
+		Header:             make(http.Header),
+		EncodeQueryStructs: true,
+		queryStructs:       make([]interface{}, 0),
 	}
 }
 
@@ -69,13 +74,14 @@ func (s *Sling) New() *Sling {
 		headerCopy[k] = v
 	}
 	return &Sling{
-		HttpClient:   s.HttpClient,
-		Method:       s.Method,
-		RawUrl:       s.RawUrl,
-		Header:       headerCopy,
-		queryStructs: append([]interface{}{}, s.queryStructs...),
-		jsonBody:     s.jsonBody,
-		bodyStruct:   s.bodyStruct,
+		HttpClient:         s.HttpClient,
+		Method:             s.Method,
+		RawUrl:             s.RawUrl,
+		Header:             headerCopy,
+		EncodeQueryStructs: s.EncodeQueryStructs,
+		queryStructs:       append([]interface{}{}, s.queryStructs...),
+		jsonBody:           s.jsonBody,
+		bodyStruct:         s.bodyStruct,
 	}
 }
 
@@ -215,7 +221,7 @@ func (s *Sling) Request() (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	err = addQueryStructs(reqURL, s.queryStructs)
+	err = addQueryStructs(reqURL, s.queryStructs, s.EncodeQueryStructs)
 	if err != nil {
 		return nil, err
 	}
@@ -234,7 +240,7 @@ func (s *Sling) Request() (*http.Request, error) {
 // addQueryStructs parses url tagged query structs using go-querystring to
 // encode them to url.Values and format them onto the url.RawQuery. Any
 // query parsing or encoding errors are returned.
-func addQueryStructs(reqURL *url.URL, queryStructs []interface{}) error {
+func addQueryStructs(reqURL *url.URL, queryStructs []interface{}, doEncodeQueryStructs bool) error {
 	urlValues, err := url.ParseQuery(reqURL.RawQuery)
 	if err != nil {
 		return err
@@ -247,13 +253,46 @@ func addQueryStructs(reqURL *url.URL, queryStructs []interface{}) error {
 		}
 		for key, values := range queryValues {
 			for _, value := range values {
-				urlValues.Add(key, value)
+				if doEncodeQueryStructs {
+					urlValues.Add(key, url.QueryEscape(value))
+				} else {
+					urlValues.Add(key, value)
+				}
 			}
 		}
 	}
-	// url.Values format to a sorted "url encoded" string, e.g. "key=val&foo=bar"
-	reqURL.RawQuery = urlValues.Encode()
+	if doEncodeQueryStructs {
+		reqURL.RawQuery = urlValues.Encode()
+	} else {
+		reqURL.RawQuery = UnEncodedQueryString(urlValues)
+	}
 	return nil
+}
+
+// UnEncodedQueryString encodes the values into ``Non URL encoded'' form
+// ("bar=baz&foo=quux") sorted by key.
+func UnEncodedQueryString(v url.Values) string {
+	if v == nil {
+		return ""
+	}
+	var buf bytes.Buffer
+	keys := make([]string, 0, len(v))
+	for k := range v {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		vs := v[k]
+		prefix := k + "="
+		for _, v := range vs {
+			if buf.Len() > 0 {
+				buf.WriteByte('&')
+			}
+			buf.WriteString(prefix)
+			buf.WriteString(v)
+		}
+	}
+	return buf.String()
 }
 
 // getRequestBody returns the io.Reader which should be used as the body
