@@ -183,21 +183,18 @@ type IssueService struct {
 
 func NewIssueService(httpClient *http.Client) *IssueService {
     return &IssueService{
-        sling: sling.New().Client(httpClient).Base(baseUrl),
+        sling: sling.New().Client(httpClient).Base(baseURL),
     }
 }
 
-func (s *IssueService) Create(owner, repo string, issueBody *IssueRequest) (*Issue, *http.Response, error) {
-    issue := new(Issue)
+func (s *IssueService) ListByRepo(owner, repo string, params *IssueListParams) ([]Issue, *http.Response, error) {
+    issues := new([]Issue)
+    githubError := new(GithubError)
     path := fmt.Sprintf("repos/%s/%s/issues", owner, repo)
-    resp, err := s.sling.New().Post(path).JsonBody(issueBody).ReceiveSuccess(issue)
-    return issue, resp, err
-}
-
-func (srvc IssueService) List(owner, repo string, params *IssueParams) ([]Issue, *http.Response, error) {
-    var issues []Issue
-    path := fmt.Sprintf("repos/%s/%s/issues", owner, repo)
-    resp, err := srvc.sling.New().Get(path).QueryStruct(params).ReceiveSuccess(&issues)
+    resp, err := s.sling.New().Get(path).QueryStruct(params).Receive(issues, githubError)
+    if err == nil {
+        err = githubError
+    }
     return *issues, resp, err
 }
 ```
