@@ -2,7 +2,7 @@
 # Sling [![Build Status](https://travis-ci.org/dghubble/sling.png)](https://travis-ci.org/dghubble/sling) [![Coverage](http://gocover.io/_badge/github.com/dghubble/sling)](http://gocover.io/github.com/dghubble/sling) [![GoDoc](http://godoc.org/github.com/dghubble/sling?status.png)](http://godoc.org/github.com/dghubble/sling)
 <img align="right" src="https://s3.amazonaws.com/dghubble/small-gopher-with-sling.png">
 
-Sling is a Go REST client library for creating and sending API requests.
+Sling is a Go HTTP client library for creating and sending API requests.
 
 Slings store HTTP Request properties to simplify sending requests and decoding responses. Check [usage](#usage) or the [examples](examples) to learn how to compose a Sling into your API client.
 
@@ -25,30 +25,32 @@ Read [GoDoc](https://godoc.org/github.com/dghubble/sling)
 
 ## Usage
 
-Use a simple Sling to set request properties (`Path`, `QueryParams`, etc.) and then create a new `http.Request` by calling `Request()`.
+Use a Sling to create an `http.Request` with a chained API for setting properties (path, method, queries, body, etc.).
 
 ```go
-req, err := sling.New().Get("https://example.com").Request()
+type Params struct {
+    Count int `url:"count,omitempty"`
+}
+
+params := &Params{Count: 5}
+req, err := sling.New().Get("https://example.com").QueryStruct(params).Request()
 client.Do(req)
 ```
 
-Slings are much more powerful though. Use them to create REST clients which wrap complex API endpoints. Copy a base Sling with `New()` to avoid repeating common configuration.
+### Path
+
+Use `Path` to set or extend the URL for created Requests. Extension means the path will be resolved relative to the existing URL.
 
 ```go
-const twitterApi = "https://api.twitter.com/1.1/"
-base := sling.New().Base(twitterApi).Client(httpAuthClient)
-
-users := base.New().Path("users/")
-statuses := base.New().Path("statuses/")
+// sends a GET request to http://example.com/foo/bar
+req, err := sling.New().Base("http://example.com/").Path("foo/").Path("bar").Request()
 ```
 
-Choose an HTTP method, set query parameters, and send the request.
+Use `Get`, `Post`, `Put`, `Patch`, `Delete`, or `Head` which are exactly the same as `Path` except they set the HTTP method too.
 
 ```go
-statuses.New().Get("show.json").QueryStruct(params).Receive(tweet)
+req, err := sling.New().Post("http://upload.com/gophers")
 ```
-
-The sections below provide more details about setting headers, query parameters, body data, and decoding a typed response.
 
 ### Headers
 
@@ -130,6 +132,29 @@ req, err := twitterBase.New().Post(path).BodyForm(tweetParams).Request()
 ```
 
 Requests will include an `application/x-www-form-urlencoded` Content-Type header.
+
+### Extension
+
+A Sling is effectively a generator for one kind of `http.Request` (say with some path and query params) so setter calls change the result of `Request()`. 
+
+Often, you may wish to create a several kinds of requests, which share some common properties (perhaps a common client and base URL). Each Sling instance provides a `New()` method which creates an independent copy. This allows a parent Sling to be extended to avoid repeating common configuration.
+
+```go
+const twitterApi = "https://api.twitter.com/1.1/"
+base := sling.New().Base(twitterApi).Client(httpAuthClient)
+
+// statuses/show.json Sling
+tweetShowSling := base.New().Get("statuses/show.json").QueryStruct(params)
+req, err := tweetShowSling.Request()
+
+// statuses/update.json Sling
+tweetPostSling := base.New().Post("statuses/update.json").BodyForm(params)
+req, err := tweetPostSling.Request()
+```
+
+Note that if the calls to `base.New()` were left out, setter calls would mutate the original Sling `base`, which is undesired! We don't intend to send requests to "https://api.twitter.com/1.1/statuses/show.json/statuses/update.json"!
+
+Recap: If you wish to extend a Sling, create a new child copy with `New()`.
 
 ### Receive
 
