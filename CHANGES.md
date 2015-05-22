@@ -7,7 +7,7 @@ Notable changes between releases.
 * Added support for receiving and decoding error JSON structs
 * Renamed Sling `JsonBody` setter to `BodyJSON` (breaking)
 * Renamed Sling `BodyStruct` setter to `BodyForm` (breaking)
-* Renamed Sling fields `method`, `rawURL` to be internal (breaking)
+* Renamed Sling fields `httpClient`, `method`, `rawURL`, and `header` to be internal (breaking)
 * Changed `Sling.Receive(v interface{})` to `Sling.Receive(successV, failureV interface{})` (breaking)
     * Previously `Receive` attempted to decode the response Body in all cases
     * Updated `Receive` will decode the response Body into successV for 2XX responses or decode the Body into failureV for other status codes. Pass a nil `successV` or `failureV` to skip JSON decoding into that value.

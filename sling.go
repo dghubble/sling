@@ -19,13 +19,13 @@ const (
 // Sling is an HTTP Request builder and sender.
 type Sling struct {
 	// http Client for doing requests
-	HTTPClient *http.Client
+	httpClient *http.Client
 	// HTTP method (GET, POST, etc.)
 	method string
 	// raw url string for requests
 	rawURL string
 	// stores key-values pairs to add to request's Headers
-	Header http.Header
+	header http.Header
 	// url tagged query structs
 	queryStructs []interface{}
 	// json tagged body struct
@@ -37,8 +37,8 @@ type Sling struct {
 // New returns a new Sling with an http DefaultClient.
 func New() *Sling {
 	return &Sling{
-		HTTPClient:   http.DefaultClient,
-		Header:       make(http.Header),
+		httpClient:   http.DefaultClient,
+		header:       make(http.Header),
 		queryStructs: make([]interface{}, 0),
 	}
 }
@@ -58,14 +58,14 @@ func New() *Sling {
 func (s *Sling) New() *Sling {
 	// copy Headers pairs into new Header map
 	headerCopy := make(http.Header)
-	for k, v := range s.Header {
+	for k, v := range s.header {
 		headerCopy[k] = v
 	}
 	return &Sling{
-		HTTPClient:   s.HTTPClient,
+		httpClient:   s.httpClient,
 		method:       s.method,
 		rawURL:       s.rawURL,
-		Header:       headerCopy,
+		header:       headerCopy,
 		queryStructs: append([]interface{}{}, s.queryStructs...),
 		bodyJSON:     s.bodyJSON,
 		bodyForm:     s.bodyForm,
@@ -78,9 +78,9 @@ func (s *Sling) New() *Sling {
 // the http.DefaultClient will be used.
 func (s *Sling) Client(httpClient *http.Client) *Sling {
 	if httpClient == nil {
-		s.HTTPClient = http.DefaultClient
+		s.httpClient = http.DefaultClient
 	} else {
-		s.HTTPClient = httpClient
+		s.httpClient = httpClient
 	}
 	return s
 }
@@ -128,14 +128,14 @@ func (s *Sling) Delete(pathURL string) *Sling {
 // Add adds the key, value pair in Headers, appending values for existing keys
 // to the key's values. Header keys are canonicalized.
 func (s *Sling) Add(key, value string) *Sling {
-	s.Header.Add(key, value)
+	s.header.Add(key, value)
 	return s
 }
 
 // Set sets the key, value pair in Headers, replacing existing values
 // associated with key. Header keys are canonicalized.
 func (s *Sling) Set(key, value string) *Sling {
-	s.Header.Set(key, value)
+	s.header.Set(key, value)
 	return s
 }
 
@@ -220,7 +220,7 @@ func (s *Sling) Request() (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-	addHeaders(req, s.Header)
+	addHeaders(req, s.header)
 	return req, err
 }
 
@@ -252,12 +252,12 @@ func addQueryStructs(reqURL *url.URL, queryStructs []interface{}) error {
 // getRequestBody returns the io.Reader which should be used as the body
 // of new Requests.
 func (s *Sling) getRequestBody() (body io.Reader, err error) {
-	if s.bodyJSON != nil && s.Header.Get(contentType) == jsonContentType {
+	if s.bodyJSON != nil && s.header.Get(contentType) == jsonContentType {
 		body, err = encodeBodyJSON(s.bodyJSON)
 		if err != nil {
 			return nil, err
 		}
-	} else if s.bodyForm != nil && s.Header.Get(contentType) == formContentType {
+	} else if s.bodyForm != nil && s.header.Get(contentType) == formContentType {
 		body, err = encodeBodyForm(s.bodyForm)
 		if err != nil {
 			return nil, err
@@ -329,7 +329,7 @@ func (s *Sling) Receive(successV, failureV interface{}) (*http.Response, error) 
 // are JSON decoded into the value pointed to by failureV.
 // Any error sending the request or decoding the response is returned.
 func (s *Sling) Do(req *http.Request, successV, failureV interface{}) (*http.Response, error) {
-	resp, err := s.HTTPClient.Do(req)
+	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		return resp, err
 	}

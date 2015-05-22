@@ -36,10 +36,10 @@ var modelA = FakeModel{Text: "note", FavoriteCount: 12}
 
 func TestNew(t *testing.T) {
 	sling := New()
-	if sling.HTTPClient != http.DefaultClient {
-		t.Errorf("expected %v, got %v", http.DefaultClient, sling.HTTPClient)
+	if sling.httpClient != http.DefaultClient {
+		t.Errorf("expected %v, got %v", http.DefaultClient, sling.httpClient)
 	}
-	if sling.Header == nil {
+	if sling.header == nil {
 		t.Errorf("Header map not initialized with make")
 	}
 	if sling.queryStructs == nil {
@@ -49,8 +49,8 @@ func TestNew(t *testing.T) {
 
 func TestSlingNew(t *testing.T) {
 	cases := []*Sling{
-		&Sling{HTTPClient: &http.Client{}, method: "GET", rawURL: "http://example.com"},
-		&Sling{HTTPClient: nil, method: "", rawURL: "http://example.com"},
+		&Sling{httpClient: &http.Client{}, method: "GET", rawURL: "http://example.com"},
+		&Sling{httpClient: nil, method: "", rawURL: "http://example.com"},
 		&Sling{queryStructs: make([]interface{}, 0)},
 		&Sling{queryStructs: []interface{}{paramsA}},
 		&Sling{queryStructs: []interface{}{paramsA, paramsB}},
@@ -65,8 +65,8 @@ func TestSlingNew(t *testing.T) {
 	}
 	for _, sling := range cases {
 		child := sling.New()
-		if child.HTTPClient != sling.HTTPClient {
-			t.Errorf("expected %p, got %p", sling.HTTPClient, child.HTTPClient)
+		if child.httpClient != sling.httpClient {
+			t.Errorf("expected %p, got %p", sling.httpClient, child.httpClient)
 		}
 		if child.method != sling.method {
 			t.Errorf("expected %s, got %s", sling.method, child.method)
@@ -74,16 +74,16 @@ func TestSlingNew(t *testing.T) {
 		if child.rawURL != sling.rawURL {
 			t.Errorf("expected %s, got %s", sling.rawURL, child.rawURL)
 		}
-		// Header should be a copy of parent Sling Header. For example, calling
+		// Header should be a copy of parent Sling header. For example, calling
 		// baseSling.Add("k","v") should not mutate previously created child Slings
-		if sling.Header != nil {
-			// struct literal cases don't init Header in usual way, skip Header check
-			if !reflect.DeepEqual(sling.Header, child.Header) {
-				t.Errorf("not DeepEqual: expected %v, got %v", sling.Header, child.Header)
+		if sling.header != nil {
+			// struct literal cases don't init Header in usual way, skip header check
+			if !reflect.DeepEqual(sling.header, child.header) {
+				t.Errorf("not DeepEqual: expected %v, got %v", sling.header, child.header)
 			}
-			sling.Header.Add("K", "V")
-			if child.Header.Get("K") != "" {
-				t.Errorf("child.Header was a reference to original map, should be copy")
+			sling.header.Add("K", "V")
+			if child.header.Get("K") != "" {
+				t.Errorf("child.header was a reference to original map, should be copy")
 			}
 		}
 		// queryStruct slice should be a new slice with a copy of the contents
@@ -117,8 +117,8 @@ func TestClientSetter(t *testing.T) {
 	for _, c := range cases {
 		sling := New()
 		sling.Client(c.input)
-		if sling.HTTPClient != c.expected {
-			t.Errorf("expected %v, got %v", c.expected, sling.HTTPClient)
+		if sling.httpClient != c.expected {
+			t.Errorf("expected %v, got %v", c.expected, sling.httpClient)
 		}
 	}
 }
@@ -199,8 +199,8 @@ func TestAddHeader(t *testing.T) {
 		{New().Add("A", "B").New().Add("a", "c"), map[string][]string{"A": []string{"B", "c"}}},
 	}
 	for _, c := range cases {
-		// type conversion from Header to alias'd map for deep equality comparison
-		headerMap := map[string][]string(c.sling.Header)
+		// type conversion from header to alias'd map for deep equality comparison
+		headerMap := map[string][]string(c.sling.header)
 		if !reflect.DeepEqual(c.expectedHeader, headerMap) {
 			t.Errorf("not DeepEqual: expected %v, got %v", c.expectedHeader, headerMap)
 		}
@@ -221,7 +221,7 @@ func TestSetHeader(t *testing.T) {
 	}
 	for _, c := range cases {
 		// type conversion from Header to alias'd map for deep equality comparison
-		headerMap := map[string][]string(c.sling.Header)
+		headerMap := map[string][]string(c.sling.header)
 		if !reflect.DeepEqual(c.expectedHeader, headerMap) {
 			t.Errorf("not DeepEqual: expected %v, got %v", c.expectedHeader, headerMap)
 		}
@@ -280,10 +280,10 @@ func TestBodyJSONSetter(t *testing.T) {
 			t.Errorf("expected %v, got %v", c.expected, sling.bodyJSON)
 		}
 		// Header Content-Type should be application/json if bodyJSON arg was non-nil
-		if c.input != nil && sling.Header.Get(contentType) != jsonContentType {
-			t.Errorf("Incorrect or missing header, expected %s, got %s", jsonContentType, sling.Header.Get(contentType))
-		} else if c.input == nil && sling.Header.Get(contentType) != "" {
-			t.Errorf("did not expect a Content-Type header, got %s", sling.Header.Get(contentType))
+		if c.input != nil && sling.header.Get(contentType) != jsonContentType {
+			t.Errorf("Incorrect or missing header, expected %s, got %s", jsonContentType, sling.header.Get(contentType))
+		} else if c.input == nil && sling.header.Get(contentType) != "" {
+			t.Errorf("did not expect a Content-Type header, got %s", sling.header.Get(contentType))
 		}
 	}
 }
@@ -309,10 +309,10 @@ func TestBodyFormSetter(t *testing.T) {
 			t.Errorf("expected %v, got %v", c.expected, sling.bodyForm)
 		}
 		// Content-Type should be application/x-www-form-urlencoded if bodyStruct was non-nil
-		if c.input != nil && sling.Header.Get(contentType) != formContentType {
-			t.Errorf("Incorrect or missing header, expected %s, got %s", formContentType, sling.Header.Get(contentType))
-		} else if c.input == nil && sling.Header.Get(contentType) != "" {
-			t.Errorf("did not expect a Content-Type header, got %s", sling.Header.Get(contentType))
+		if c.input != nil && sling.header.Get(contentType) != formContentType {
+			t.Errorf("Incorrect or missing header, expected %s, got %s", formContentType, sling.header.Get(contentType))
+		} else if c.input == nil && sling.header.Get(contentType) != "" {
+			t.Errorf("did not expect a Content-Type header, got %s", sling.header.Get(contentType))
 		}
 	}
 
