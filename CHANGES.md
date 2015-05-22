@@ -15,6 +15,7 @@ Notable changes between releases.
     * To retain the old behavior, duplicate the first argument (e.g. s.Receive(&tweet, &tweet))
 * Changed `Sling.Do(http.Request, v interface{})` to `Sling.Do(http.Request, successV, failureV interface{})` (breaking)
     * See the changelog entry about `Receive`, the upgrade path is the same.
+* Require responses to have Content-Type containing application/json before attempting JSON decoding in `Recieve`, `ReceiveSuccess` or `Do`.
 * Removed HEAD, GET, POST, PUT, PATCH, DELETE constants, no reason to export them (breaking)
 
 ## v0.4.0 (2015-04-26)

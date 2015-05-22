@@ -580,8 +580,8 @@ func TestDo_onFailure(t *testing.T) {
 	client, mux, server := testServer()
 	defer server.Close()
 	mux.HandleFunc("/failure", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(400)
 		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(400)
 		fmt.Fprintf(w, `{"message": "Invalid argument", "code": 215}`)
 	})
 
@@ -610,8 +610,8 @@ func TestDo_onFailureWithNilValue(t *testing.T) {
 	client, mux, server := testServer()
 	defer server.Close()
 	mux.HandleFunc("/failure", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(420)
 		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(420)
 		fmt.Fprintf(w, `{"message": "Enhance your calm", "code": 88}`)
 	})
 
@@ -633,6 +633,26 @@ func TestDo_onFailureWithNilValue(t *testing.T) {
 	}
 }
 
+func TestDo_skipDecodingIfContentTypeWrong(t *testing.T) {
+	client, mux, server := testServer()
+	defer server.Close()
+	mux.HandleFunc("/success", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		fmt.Fprintf(w, `{"text": "Some text", "favorite_count": 24}`)
+	})
+
+	sling := New().Client(client)
+	req, _ := http.NewRequest("GET", "http://example.com/success", nil)
+
+	model := new(FakeModel)
+	sling.Do(req, model, nil)
+
+	expectedModel := &FakeModel{}
+	if !reflect.DeepEqual(expectedModel, model) {
+		t.Errorf("decoding should have been skipped, Content-Type was incorrect")
+	}
+}
+
 func TestReceive_success(t *testing.T) {
 	client, mux, server := testServer()
 	defer server.Close()
@@ -640,6 +660,7 @@ func TestReceive_success(t *testing.T) {
 		assertMethod(t, "POST", r)
 		assertQuery(t, map[string]string{"kind_name": "vanilla", "count": "11"}, r)
 		assertPostForm(t, map[string]string{"kind_name": "vanilla", "count": "11"}, r)
+		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintf(w, `{"text": "Some text", "favorite_count": 24}`)
 	})
 
@@ -673,6 +694,7 @@ func TestReceive_failure(t *testing.T) {
 		assertMethod(t, "POST", r)
 		assertQuery(t, map[string]string{"kind_name": "vanilla", "count": "11"}, r)
 		assertPostForm(t, map[string]string{"kind_name": "vanilla", "count": "11"}, r)
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(429)
 		fmt.Fprintf(w, `{"message": "Rate limit exceeded", "code": 88}`)
 	})

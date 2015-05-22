@@ -335,7 +335,9 @@ func (s *Sling) Do(req *http.Request, successV, failureV interface{}) (*http.Res
 	}
 	// when err is nil, resp contains a non-nil resp.Body which must be closed
 	defer resp.Body.Close()
-	err = decodeResponseJSON(resp, successV, failureV)
+	if strings.Contains(resp.Header.Get(contentType), jsonContentType) {
+		err = decodeResponseJSON(resp, successV, failureV)
+	}
 	return resp, err
 }
 
