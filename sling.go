@@ -38,6 +38,7 @@ type Sling struct {
 func New() *Sling {
 	return &Sling{
 		httpClient:   http.DefaultClient,
+		method:       "GET",
 		header:       make(http.Header),
 		queryStructs: make([]interface{}, 0),
 	}

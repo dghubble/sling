@@ -170,6 +170,7 @@ func TestMethodSetters(t *testing.T) {
 		sling          *Sling
 		expectedMethod string
 	}{
+		{New().Path("http://a.io"), "GET"},
 		{New().Head("http://a.io"), "HEAD"},
 		{New().Get("http://a.io"), "GET"},
 		{New().Post("http://a.io"), "POST"},
@@ -325,23 +326,23 @@ func TestRequest_urlAndMethod(t *testing.T) {
 		expectedURL    string
 		expectedErr    error
 	}{
-		{New().Base("http://a.io"), "", "http://a.io", nil},
-		{New().Path("http://a.io"), "", "http://a.io", nil},
+		{New().Base("http://a.io"), "GET", "http://a.io", nil},
+		{New().Path("http://a.io"), "GET", "http://a.io", nil},
 		{New().Get("http://a.io"), "GET", "http://a.io", nil},
 		{New().Put("http://a.io"), "PUT", "http://a.io", nil},
-		{New().Base("http://a.io/").Path("foo"), "", "http://a.io/foo", nil},
+		{New().Base("http://a.io/").Path("foo"), "GET", "http://a.io/foo", nil},
 		{New().Base("http://a.io/").Post("foo"), "POST", "http://a.io/foo", nil},
 		// if relative path is an absolute url, base is ignored
-		{New().Base("http://a.io").Path("http://b.io"), "", "http://b.io", nil},
-		{New().Path("http://a.io").Path("http://b.io"), "", "http://b.io", nil},
+		{New().Base("http://a.io").Path("http://b.io"), "GET", "http://b.io", nil},
+		{New().Path("http://a.io").Path("http://b.io"), "GET", "http://b.io", nil},
 		// last method setter takes priority
 		{New().Get("http://b.io").Post("http://a.io"), "POST", "http://a.io", nil},
 		{New().Post("http://a.io/").Put("foo/").Delete("bar"), "DELETE", "http://a.io/foo/bar", nil},
 		// last Base setter takes priority
-		{New().Base("http://a.io").Base("http://b.io"), "", "http://b.io", nil},
+		{New().Base("http://a.io").Base("http://b.io"), "GET", "http://b.io", nil},
 		// Path setters are additive
-		{New().Base("http://a.io/").Path("foo/").Path("bar"), "", "http://a.io/foo/bar", nil},
-		{New().Path("http://a.io/").Path("foo/").Path("bar"), "", "http://a.io/foo/bar", nil},
+		{New().Base("http://a.io/").Path("foo/").Path("bar"), "GET", "http://a.io/foo/bar", nil},
+		{New().Path("http://a.io/").Path("foo/").Path("bar"), "GET", "http://a.io/foo/bar", nil},
 		// removes extra '/' between base and ref url
 		{New().Base("http://a.io/").Get("/foo"), "GET", "http://a.io/foo", nil},
 	}
