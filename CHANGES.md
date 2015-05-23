@@ -2,12 +2,13 @@
 
 Notable changes between releases.
 
-## v1.0.0-rc (unreleased)
+## v1.0.0 (2015-05-23)
 
 * Added support for receiving and decoding error JSON structs
 * Renamed Sling `JsonBody` setter to `BodyJSON` (breaking)
 * Renamed Sling `BodyStruct` setter to `BodyForm` (breaking)
 * Renamed Sling fields `httpClient`, `method`, `rawURL`, and `header` to be internal (breaking)
+* Changed `Do` and `Receive` to skip response JSON decoding if "application/json" Content-Type is missing
 * Changed `Sling.Receive(v interface{})` to `Sling.Receive(successV, failureV interface{})` (breaking)
     * Previously `Receive` attempted to decode the response Body in all cases
     * Updated `Receive` will decode the response Body into successV for 2XX responses or decode the Body into failureV for other status codes. Pass a nil `successV` or `failureV` to skip JSON decoding into that value.
@@ -15,7 +16,6 @@ Notable changes between releases.
     * To retain the old behavior, duplicate the first argument (e.g. s.Receive(&tweet, &tweet))
 * Changed `Sling.Do(http.Request, v interface{})` to `Sling.Do(http.Request, successV, failureV interface{})` (breaking)
     * See the changelog entry about `Receive`, the upgrade path is the same.
-* Require responses to have Content-Type containing application/json before attempting JSON decoding in `Recieve`, `ReceiveSuccess` or `Do`.
 * Removed HEAD, GET, POST, PUT, PATCH, DELETE constants, no reason to export them (breaking)
 
 ## v0.4.0 (2015-04-26)

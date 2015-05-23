@@ -6,6 +6,8 @@ Sling is a Go HTTP client library for creating and sending API requests.
 
 Slings store HTTP Request properties to simplify sending requests and decoding responses. Check [usage](#usage) or the [examples](examples) to learn how to compose a Sling into your API client.
 
+Note: Sling **v1.0** recently introduced some breaking changes. See [changes](CHANGES.md).
+
 ### Features
 
 * Base/Path - path extend a Sling for different endpoints
@@ -31,8 +33,8 @@ Use a Sling to create an `http.Request` with a chained API for setting propertie
 type Params struct {
     Count int `url:"count,omitempty"`
 }
-
 params := &Params{Count: 5}
+
 req, err := sling.New().Get("https://example.com").QueryStruct(params).Request()
 client.Do(req)
 ```
@@ -54,7 +56,7 @@ req, err := sling.New().Post("http://upload.com/gophers")
 
 ### Headers
 
-`Add` or `Set` headers which should be applied to all Requests created by a Sling.
+`Add` or `Set` headers which should be applied to the Requests created by a Sling.
 
 ```go
 base := sling.New().Base(baseUrl).Set("User-Agent", "Gophergram API Client")
@@ -133,11 +135,14 @@ req, err := twitterBase.New().Post(path).BodyForm(tweetParams).Request()
 
 Requests will include an `application/x-www-form-urlencoded` Content-Type header.
 
-### Extension
+### Extend a 
 
-A Sling is effectively a generator for one kind of `http.Request` (say with some path and query params) so setter calls change the result of `Request()`. 
+Each distinct Sling generates an `http.Request` (say with some path and query
+params) each time `Request()` is called, based on its state. When creating
+different kinds of requests using distinct Slings, you may wish to extend
+an existing Sling to minimize duplication (e.g. a common client).
 
-Often, you may wish to create a several kinds of requests, which share some common properties (perhaps a common client and base URL). Each Sling instance provides a `New()` method which creates an independent copy. This allows a parent Sling to be extended to avoid repeating common configuration.
+Each Sling instance provides a `New()` method which creates an independent copy, so setting properties on the child won't mutate the parent Sling. 
 
 ```go
 const twitterApi = "https://api.twitter.com/1.1/"
@@ -152,7 +157,10 @@ tweetPostSling := base.New().Post("statuses/update.json").BodyForm(params)
 req, err := tweetPostSling.Request()
 ```
 
-Note that if the calls to `base.New()` were left out, setter calls would mutate the original Sling `base`, which is undesired! We don't intend to send requests to "https://api.twitter.com/1.1/statuses/show.json/statuses/update.json"!
+Without the calls to `base.New()`, tweetShowSling and tweetPostSling reference
+the base Sling and POST to
+"https://api.twitter.com/1.1/statuses/show.json/statuses/update.json", which
+is undesired.
 
 Recap: If you wish to extend a Sling, create a new child copy with `New()`.
 
