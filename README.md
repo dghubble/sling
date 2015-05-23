@@ -135,7 +135,7 @@ req, err := twitterBase.New().Post(path).BodyForm(tweetParams).Request()
 
 Requests will include an `application/x-www-form-urlencoded` Content-Type header.
 
-### Extend a 
+### Extend a Sling
 
 Each distinct Sling generates an `http.Request` (say with some path and query
 params) each time `Request()` is called, based on its state. When creating
@@ -207,7 +207,7 @@ Pass a nil `successV` or `failureV` argument to skip JSON decoding into that val
 
 ### Build an API
 
-APIs typically define an endpoint (also called a service) for each type of resource. For example, here is a tiny Github IssueService which [creates](https://developer.github.com/v3/issues/#create-an-issue) and [lists](https://developer.github.com/v3/issues/#list-issues-for-a-repository) repository issues.
+APIs typically define an endpoint (also called a service) for each type of resource. For example, here is a tiny Github IssueService which [lists](https://developer.github.com/v3/issues/#list-issues-for-a-repository) repository issues.
 
 ```go
 type IssueService struct {
