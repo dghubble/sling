@@ -232,9 +232,12 @@ func (s *IssueService) ListByRepo(owner, repo string, params *IssueListParams) (
 }
 ```
 
-## APIs using Sling
+## Projects using Sling
 
+* [ajvb/kala](https://github.com/ajvb/kala)
 * [dghubble/go-twitter](https://github.com/dghubble/go-twitter)
+* [dghubble/go-digits](https://github.com/dghubble/go-digits)
+* [drinkin/go-gosquared](https://github.com/drinkin/go-gosquared)
 
 Create a Pull Request to add a link to your own API.
 
