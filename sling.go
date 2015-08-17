@@ -3,11 +3,12 @@ package sling
 import (
 	"bytes"
 	"encoding/json"
-	goquery "github.com/google/go-querystring/query"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
+
+	goquery "github.com/google/go-querystring/query"
 )
 
 const (
