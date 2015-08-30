@@ -6,8 +6,6 @@ Sling is a Go HTTP client library for creating and sending API requests.
 
 Slings store HTTP Request properties to simplify sending requests and decoding responses. Check [usage](#usage) or the [examples](examples) to learn how to compose a Sling into your API client.
 
-Note: Sling **v1.0** recently introduced some breaking changes. See [changes](CHANGES.md).
-
 ### Features
 
 * Base/Path - path extend a Sling for different endpoints
@@ -246,6 +244,10 @@ Create a Pull Request to add a link to your own API.
 Many client libraries follow the lead of [google/go-github](https://github.com/google/go-github) (our inspiration!), but do so by reimplementing logic common to all clients.
 
 This project borrows and abstracts those ideas into a Sling, an agnostic component any API client can use for creating and sending requests.
+
+## Contributing
+
+See the [Contributing Guide](https://gist.github.com/dghubble/be682c123727f70bcfe7).
 
 ## License
 
