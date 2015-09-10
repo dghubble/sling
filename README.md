@@ -133,6 +133,11 @@ req, err := twitterBase.New().Post(path).BodyForm(tweetParams).Request()
 
 Requests will include an `application/x-www-form-urlencoded` Content-Type header.
 
+#### Plain Request Body
+
+If you prefer, you can just set the `Body` which is then passed through unaltered.  Note, no Content-Type header will be set for these, it's up to the developer to correctly set this header using something like `Set("Content-Type", "text/plain")`.
+
+
 ### Extend a Sling
 
 Each distinct Sling generates an `http.Request` (say with some path and query
@@ -140,7 +145,7 @@ params) each time `Request()` is called, based on its state. When creating
 different kinds of requests using distinct Slings, you may wish to extend
 an existing Sling to minimize duplication (e.g. a common client).
 
-Each Sling instance provides a `New()` method which creates an independent copy, so setting properties on the child won't mutate the parent Sling. 
+Each Sling instance provides a `New()` method which creates an independent copy, so setting properties on the child won't mutate the parent Sling.
 
 ```go
 const twitterApi = "https://api.twitter.com/1.1/"
@@ -252,4 +257,3 @@ See the [Contributing Guide](https://gist.github.com/dghubble/be682c123727f70bcf
 ## License
 
 [MIT License](LICENSE)
-
