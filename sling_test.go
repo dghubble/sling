@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"math"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -319,6 +322,34 @@ func TestBodyFormSetter(t *testing.T) {
 
 }
 
+func TestBodySetter(t *testing.T) {
+	var testInput = ioutil.NopCloser(strings.NewReader("test"))
+	cases := []struct {
+		initial  io.ReadCloser
+		input    io.Reader
+		expected io.Reader
+	}{
+		// nil body is overriden by a set body
+		{nil, testInput, testInput},
+		// initial body is not overriden by nil body
+		{testInput, nil, testInput},
+		// nil body is returned unaltered
+		{nil, nil, nil},
+	}
+	for _, c := range cases {
+		sling := New()
+		sling.body = c.initial
+		sling.Body(c.input)
+		body, err := sling.getRequestBody()
+		if err != nil {
+			t.Errorf("expected nil, got %v", err)
+		}
+		if body != c.expected {
+			t.Errorf("expected %v, got %v", c.expected, sling.Body)
+		}
+	}
+}
+
 func TestRequest_urlAndMethod(t *testing.T) {
 	cases := []struct {
 		sling          *Sling
@@ -403,6 +434,9 @@ func TestRequest_body(t *testing.T) {
 		{New().BodyJSON(modelA).New().BodyForm(paramsB), "count=25&kind_name=recent", formContentType},
 		{New().BodyForm(paramsB).New().BodyJSON(nil), "count=25&kind_name=recent", formContentType},
 		{New().BodyJSON(modelA).New().BodyForm(nil), "{\"text\":\"note\",\"favorite_count\":12}\n", jsonContentType},
+		// Body
+		{New().Body(strings.NewReader("this-is-a-test")), "this-is-a-test", ""},
+		{New().Body(strings.NewReader("a")).Body(strings.NewReader("b")), "b", ""},
 	}
 	for _, c := range cases {
 		req, _ := c.sling.Request()
@@ -412,8 +446,8 @@ func TestRequest_body(t *testing.T) {
 		if value := buf.String(); value != c.expectedBody {
 			t.Errorf("expected Request.Body %s, got %s", c.expectedBody, value)
 		}
-		// Header Content-Type should be application/json
-		if actualHeader := req.Header.Get(contentType); actualHeader != c.expectedContentType {
+		// Header Content-Type should be expectedContentType ("" means no contentType expected)
+		if actualHeader := req.Header.Get(contentType); actualHeader != c.expectedContentType && c.expectedContentType != "" {
 			t.Errorf("Incorrect or missing header, expected %s, got %s", c.expectedContentType, actualHeader)
 		}
 	}
