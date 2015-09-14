@@ -99,6 +99,12 @@ its Requests using BodyForm.
 Requests will include an "application/x-www-form-urlencoded" Content-Type
 header.
 
+Plain Body
+
+Make a Sling include a plain io.Reader in the Body of its Requests using Body.
+No Content-Type header will be set, the developer may set this header using
+something like Set("Content-Type", "text/plain").
+
 Extend a Sling
 
 Each distinct Sling generates an http.Request (say with some path and query
