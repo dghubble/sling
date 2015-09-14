@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
@@ -33,6 +34,8 @@ type Sling struct {
 	bodyJSON interface{}
 	// url tagged body struct (form)
 	bodyForm interface{}
+	// simply assigned body
+	body io.ReadCloser
 }
 
 // New returns a new Sling with an http DefaultClient.
@@ -71,6 +74,7 @@ func (s *Sling) New() *Sling {
 		queryStructs: append([]interface{}{}, s.queryStructs...),
 		bodyJSON:     s.bodyJSON,
 		bodyForm:     s.bodyForm,
+		body:         s.body,
 	}
 }
 
@@ -200,6 +204,18 @@ func (s *Sling) BodyForm(bodyForm interface{}) *Sling {
 	return s
 }
 
+// Body sets the Sling's body. The value pointed to by the
+// body will be set raw/as-is as the Body on new requests.
+// The body argument should be a string
+func (s *Sling) Body(body io.Reader) *Sling {
+	rc, ok := body.(io.ReadCloser)
+	if !ok && body != nil {
+		rc = ioutil.NopCloser(body)
+	}
+	s.body = rc
+	return s
+}
+
 // Requests
 
 // Request returns a new http.Request created with the Sling properties.
@@ -264,6 +280,8 @@ func (s *Sling) getRequestBody() (body io.Reader, err error) {
 		if err != nil {
 			return nil, err
 		}
+	} else if s.body != nil {
+		body, err = s.body, nil
 	}
 	return body, nil
 }
