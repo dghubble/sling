@@ -8,9 +8,9 @@ Slings store HTTP Request properties to simplify sending requests and decoding r
 
 ### Features
 
-* Base/Path - path extend a Sling for different endpoints
 * Method Setters: Get/Post/Put/Patch/Delete/Head
-* Add and Set Request Headers
+* Add or Set Request Headers
+* Base/Path: Extend a Sling for different endpoints
 * Encode structs into URL query parameters
 * Encode a form or JSON into the Request Body
 * Receive JSON success or failure responses
@@ -25,7 +25,7 @@ Read [GoDoc](https://godoc.org/github.com/dghubble/sling)
 
 ## Usage
 
-Use a Sling to create an `http.Request` with a chained API for setting properties (path, method, queries, body, etc.).
+Use a Sling to set path, method, header, query, or body properties and create an `http.Request`.
 
 ```go
 type Params struct {
@@ -42,8 +42,8 @@ client.Do(req)
 Use `Path` to set or extend the URL for created Requests. Extension means the path will be resolved relative to the existing URL.
 
 ```go
-// sends a GET request to http://example.com/foo/bar
-req, err := sling.New().Base("http://example.com/").Path("foo/").Path("bar").Request()
+// creates a GET request to https://example.com/foo/bar
+req, err := sling.New().Base("https://example.com/").Path("foo/").Path("bar").Request()
 ```
 
 Use `Get`, `Post`, `Put`, `Patch`, `Delete`, or `Head` which are exactly the same as `Path` except they set the HTTP method too.
@@ -54,16 +54,18 @@ req, err := sling.New().Post("http://upload.com/gophers")
 
 ### Headers
 
-`Add` or `Set` headers which should be applied to the Requests created by a Sling.
+`Add` or `Set` headers for requests created by a Sling.
 
 ```go
-base := sling.New().Base(baseUrl).Set("User-Agent", "Gophergram API Client")
-req, err := base.New().Get("gophergram/list").Request()
+s := sling.New().Base(baseUrl).Set("User-Agent", "Gophergram API Client")
+req, err := s.New().Get("gophergram/list").Request()
 ```
 
-### QueryStruct
+### Query
 
-Define [url parameter structs](https://godoc.org/github.com/google/go-querystring/query) and use `QueryStruct` to encode query parameters.
+#### QueryStruct
+
+Define [url tagged structs](https://godoc.org/github.com/google/go-querystring/query). Use `QueryStruct` to encode a struct as query parameters on requests.
 
 ```go
 // Github Issue Parameters
@@ -79,17 +81,17 @@ type IssueParams struct {
 
 ```go
 githubBase := sling.New().Base("https://api.github.com/").Client(httpClient)
-path := fmt.Sprintf("repos/%s/%s/issues", owner, repo)
 
+path := fmt.Sprintf("repos/%s/%s/issues", owner, repo)
 params := &IssueParams{Sort: "updated", State: "open"}
 req, err := githubBase.New().Get(path).QueryStruct(params).Request()
 ```
 
 ### Body
 
-#### Json Body
+#### JSON Body
 
-Make a Sling include JSON in the Body of its Requests using `BodyJSON`.
+Define [JSON tagged structs](https://golang.org/pkg/encoding/json/). Use `BodyJSON` to JSON encode a struct as the Body on requests.
 
 ```go
 type IssueRequest struct {
@@ -116,7 +118,7 @@ Requests will include an `application/json` Content-Type header.
 
 #### Form Body
 
-Make a Sling include a url-tagged struct as a url-encoded form in the Body of its Requests using `BodyForm`.
+Define [url tagged structs](https://godoc.org/github.com/google/go-querystring/query). Use `BodyForm` to form url encode a struct as the Body on requests.
 
 ```go
 type StatusUpdateParams struct {
@@ -135,20 +137,25 @@ Requests will include an `application/x-www-form-urlencoded` Content-Type header
 
 #### Plain Body
 
-Make a Sling include a plain `io.Reader` in the Body of its Requests using `Body`. No Content-Type header will be set, the developer may set this header using something like `Set("Content-Type", "text/plain")`.
+Use `Body` to set a plain `io.Reader` on requests created by a Sling.
+
+```go
+body := strings.NewReader("raw body")
+req, err := sling.New().Base("https://example.com").Body(body).Request()
+```
+
+Set a content type header, if desired (e.g. `Set("Content-Type", "text/plain")`).
 
 ### Extend a Sling
 
-Each distinct Sling generates an `http.Request` (say with some path and query
-params) each time `Request()` is called, based on its state. When creating
-different kinds of requests using distinct Slings, you may wish to extend
-an existing Sling to minimize duplication (e.g. a common client).
+Each Sling generates an `http.Request` (say with some path and query
+params) each time `Request()` is called, based on its state. When creating different slings, you may wish to extend an existing Sling to minimize duplication (e.g. a common client).
 
 Each Sling instance provides a `New()` method which creates an independent copy, so setting properties on the child won't mutate the parent Sling.
 
 ```go
 const twitterApi = "https://api.twitter.com/1.1/"
-base := sling.New().Base(twitterApi).Client(httpAuthClient)
+base := sling.New().Base(twitterApi).Client(authClient)
 
 // statuses/show.json Sling
 tweetShowSling := base.New().Get("statuses/show.json").QueryStruct(params)
@@ -159,14 +166,15 @@ tweetPostSling := base.New().Post("statuses/update.json").BodyForm(params)
 req, err := tweetPostSling.Request()
 ```
 
-Without the calls to `base.New()`, tweetShowSling and tweetPostSling reference
-the base Sling and POST to
+Without the calls to `base.New()`, `tweetShowSling` and `tweetPostSling` would reference the base Sling and POST to
 "https://api.twitter.com/1.1/statuses/show.json/statuses/update.json", which
 is undesired.
 
-Recap: If you wish to extend a Sling, create a new child copy with `New()`.
+Recap: If you wish to *extend* a Sling, create a new child copy with `New()`.
 
-### Receive
+### Sending
+
+#### Receive
 
 Define a JSON struct to decode a type from 2XX success responses. Use `ReceiveSuccess(successV interface{})` to send a new Request and decode the response body into `successV` if it succeeds.
 
@@ -212,6 +220,8 @@ Pass a nil `successV` or `failureV` argument to skip JSON decoding into that val
 APIs typically define an endpoint (also called a service) for each type of resource. For example, here is a tiny Github IssueService which [lists](https://developer.github.com/v3/issues/#list-issues-for-a-repository) repository issues.
 
 ```go
+const baseURL = "https://api.github.com/"
+
 type IssueService struct {
     sling *sling.Sling
 }
@@ -234,12 +244,14 @@ func (s *IssueService) ListByRepo(owner, repo string, params *IssueListParams) (
 }
 ```
 
-## Projects using Sling
+## Example APIs using Sling
 
-* [ajvb/kala](https://github.com/ajvb/kala)
-* [dghubble/go-twitter](https://github.com/dghubble/go-twitter)
-* [dghubble/go-digits](https://github.com/dghubble/go-digits)
-* [drinkin/go-gosquared](https://github.com/drinkin/go-gosquared)
+* Digits [dghubble/go-digits](https://github.com/dghubble/go-digits)
+* GoSquared [drinkin/go-gosquared](https://github.com/drinkin/go-gosquared)
+* Kala [ajvb/kala](https://github.com/ajvb/kala)
+* Parse [fergstar/go-parse](https://github.com/fergstar/go-parse)
+* Rdio [apriendeau/shares](https://github.com/apriendeau/shares)
+* Twitter [dghubble/go-twitter](https://github.com/dghubble/go-twitter)
 
 Create a Pull Request to add a link to your own API.
 

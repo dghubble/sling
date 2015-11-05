@@ -181,7 +181,7 @@ func (s *Sling) QueryStruct(queryStruct interface{}) *Sling {
 // Body
 
 // BodyJSON sets the Sling's bodyJSON. The value pointed to by the bodyJSON
-// will be JSON encoded to set the Body on new requests (see Request()).
+// will be JSON encoded as the Body on new requests (see Request()).
 // The bodyJSON argument should be a pointer to a JSON tagged struct. See
 // https://golang.org/pkg/encoding/json/#MarshalIndent for details.
 func (s *Sling) BodyJSON(bodyJSON interface{}) *Sling {
@@ -192,8 +192,8 @@ func (s *Sling) BodyJSON(bodyJSON interface{}) *Sling {
 	return s
 }
 
-// BodyForm sets the Sling's bodyForm. The value pointed to by the
-// bodyForm will be url encoded to set the Body on new requests.
+// BodyForm sets the Sling's bodyForm. The value pointed to by the bodyForm
+// will be url encoded as the Body on new requests (see Request()).
 // The bodyStruct argument should be a pointer to a url tagged struct. See
 // https://godoc.org/github.com/google/go-querystring/query for details.
 func (s *Sling) BodyForm(bodyForm interface{}) *Sling {

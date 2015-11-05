@@ -1,16 +1,18 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"github.com/dghubble/sling"
-	"golang.org/x/oauth2"
+	"log"
 	"net/http"
 	"os"
+
+	"github.com/coreos/pkg/flagutil"
+	"github.com/dghubble/sling"
+	"golang.org/x/oauth2"
 )
 
 const baseURL = "https://api.github.com/"
-
-// Define models
 
 // Issue is a simplified Github issue
 // https://developer.github.com/v3/issues/#response
@@ -60,7 +62,7 @@ type IssueListParams struct {
 	Since     string `url:"since,omitempty"`
 }
 
-// Implement services
+// Services
 
 // IssueService provides methods for creating and reading issues.
 type IssueService struct {
@@ -109,7 +111,7 @@ func (s *IssueService) Create(owner, repo string, issueBody *IssueRequest) (*Iss
 	return issue, resp, err
 }
 
-// (optional) Create a client to wrap services
+// Client to wrap services
 
 // Client is a tiny Github client
 type Client struct {
@@ -125,22 +127,25 @@ func NewClient(httpClient *http.Client) *Client {
 }
 
 func main() {
-
 	// Github Unauthenticated API
 	client := NewClient(nil)
 	params := &IssueListParams{Sort: "updated"}
 	issues, _, _ := client.IssueService.ListByRepo("golang", "go", params)
 	fmt.Printf("Public golang/go Issues:\n%v\n", issues)
 
-	// Github OAuth2 Example - httpClient handles authorization
-	accessToken := os.Getenv("GITHUB_ACCESS_TOKEN")
-	if accessToken == "" {
-		fmt.Println("Run 'export GITHUB_ACCESS_TOKEN=mytoken' and retry to list your public/private issues")
-		os.Exit(0)
+	// Github OAuth2 API
+	flags := flag.NewFlagSet("github-example", flag.ExitOnError)
+	// -access-token=xxx or GITHUB_ACCESS_TOKEN env var
+	accessToken := flags.String("access-token", "", "Github Access Token")
+	flags.Parse(os.Args[1:])
+	flagutil.SetFlagsFromEnv(flags, "GITHUB")
+
+	if *accessToken == "" {
+		log.Fatal("Github Access Token required to list private issues")
 	}
 
 	config := &oauth2.Config{}
-	token := &oauth2.Token{AccessToken: accessToken}
+	token := &oauth2.Token{AccessToken: *accessToken}
 	httpClient := config.Client(oauth2.NoContext, token)
 
 	client = NewClient(httpClient)

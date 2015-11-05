@@ -7,8 +7,8 @@ client.
 
 Usage
 
-Use a Sling to create an http.Request with a chained API for setting properties
-(path, method, queries, body, etc.).
+Use a Sling to set path, method, header, query, or body properties and create an
+http.Request.
 
 	type Params struct {
 	    Count int `url:"count,omitempty"`
@@ -23,8 +23,8 @@ Path
 Use Path to set or extend the URL for created Requests. Extension means the
 path will be resolved relative to the existing URL.
 
-	// sends a GET request to http://example.com/foo/bar
-	req, err := sling.New().Base("http://example.com/").Path("foo/").Path("bar").Request()
+	// creates a GET request to https://example.com/foo/bar
+	req, err := sling.New().Base("https://example.com/").Path("foo/").Path("bar").Request()
 
 Use Get, Post, Put, Patch, Delete, or Head which are exactly the same as Path
 except they set the HTTP method too.
@@ -33,15 +33,15 @@ except they set the HTTP method too.
 
 Headers
 
-Add or Set headers which should be applied to the Requests created by a Sling.
+Add or Set headers for requests created by a Sling.
 
-	base := sling.New().Base(baseUrl).Set("User-Agent", "Gophergram API Client")
-	req, err := base.New().Get("gophergram/list").Request()
+	s := sling.New().Base(baseUrl).Set("User-Agent", "Gophergram API Client")
+	req, err := s.New().Get("gophergram/list").Request()
 
 QueryStruct
 
-Define url parameter structs (https://godoc.org/github.com/google/go-querystring/query)
-and use QueryStruct to encode query parameters.
+Define url parameter structs (https://godoc.org/github.com/google/go-querystring/query).
+Use QueryStruct to encode a struct as query parameters on requests.
 
 	// Github Issue Parameters
 	type IssueParams struct {
@@ -54,14 +54,15 @@ and use QueryStruct to encode query parameters.
 	}
 
 	githubBase := sling.New().Base("https://api.github.com/").Client(httpClient)
-	path := fmt.Sprintf("repos/%s/%s/issues", owner, repo)
 
+	path := fmt.Sprintf("repos/%s/%s/issues", owner, repo)
 	params := &IssueParams{Sort: "updated", State: "open"}
 	req, err := githubBase.New().Get(path).QueryStruct(params).Request()
 
 Json Body
 
-Make a Sling include JSON in the Body of its Requests using BodyJSON.
+Define JSON tagged structs (https://golang.org/pkg/encoding/json/).
+Use BodyJSON to JSON encode a struct as the Body on requests.
 
 	type IssueRequest struct {
 	    Title     string   `json:"title,omitempty"`
@@ -84,8 +85,8 @@ Requests will include an "application/json" Content-Type header.
 
 Form Body
 
-Make a Sling include a url-tagged struct as a url-encoded form in the Body of
-its Requests using BodyForm.
+Define url tagged structs (https://godoc.org/github.com/google/go-querystring/query).
+Use BodyForm to form url encode a struct as the Body on requests.
 
 	type StatusUpdateParams struct {
 	    Status             string   `url:"status,omitempty"`
@@ -101,22 +102,25 @@ header.
 
 Plain Body
 
-Make a Sling include a plain io.Reader in the Body of its Requests using Body.
-No Content-Type header will be set, the developer may set this header using
-something like Set("Content-Type", "text/plain").
+Use Body to set a plain io.Reader on requests created by a Sling.
+
+	body := strings.NewReader("raw body")
+	req, err := sling.New().Base("https://example.com").Body(body).Request()
+
+Set a content type header, if desired (e.g. Set("Content-Type", "text/plain")).
 
 Extend a Sling
 
-Each distinct Sling generates an http.Request (say with some path and query
-params) each time Request() is called, based on its state. When creating
-different kinds of requests using distinct Slings, you may wish to extend
-an existing Sling to minimize duplication (e.g. a common client).
+Each Sling generates an http.Request (say with some path and query params)
+each time Request() is called, based on its state. When creating
+different slings, you may wish to extend an existing Sling to minimize
+duplication (e.g. a common client).
 
 Each Sling instance provides a New() method which creates an independent copy,
 so setting properties on the child won't mutate the parent Sling.
 
 	const twitterApi = "https://api.twitter.com/1.1/"
-	base := sling.New().Base(twitterApi).Client(httpAuthClient)
+	base := sling.New().Base(twitterApi).Client(authClient)
 
 	// statuses/show.json Sling
 	tweetShowSling := base.New().Get("statuses/show.json").QueryStruct(params)
@@ -126,8 +130,8 @@ so setting properties on the child won't mutate the parent Sling.
 	tweetPostSling := base.New().Post("statuses/update.json").BodyForm(params)
 	req, err := tweetPostSling.Request()
 
-Without the calls to base.New(), tweetShowSling and tweetPostSling reference
-the base Sling and POST to
+Without the calls to base.New(), tweetShowSling and tweetPostSling would
+reference the base Sling and POST to
 "https://api.twitter.com/1.1/statuses/show.json/statuses/update.json", which
 is undesired.
 
