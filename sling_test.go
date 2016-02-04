@@ -345,7 +345,7 @@ func TestBodySetter(t *testing.T) {
 			t.Errorf("expected nil, got %v", err)
 		}
 		if body != c.expected {
-			t.Errorf("expected %v, got %v", c.expected, sling.Body)
+			t.Errorf("expected %v, got %v", c.expected, body)
 		}
 	}
 }
