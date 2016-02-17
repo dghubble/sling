@@ -148,8 +148,8 @@ Set a content type header, if desired (e.g. `Set("Content-Type", "text/plain")`)
 
 ### Extend a Sling
 
-Each Sling generates an `http.Request` (say with some path and query
-params) each time `Request()` is called, based on its state. When creating different slings, you may wish to extend an existing Sling to minimize duplication (e.g. a common client).
+Each Sling creates a standard `http.Request` (e.g. with some path and query
+params) each time `Request()` is called. You may wish to extend an existing Sling to minimize duplication (e.g. a common client or base url).
 
 Each Sling instance provides a `New()` method which creates an independent copy, so setting properties on the child won't mutate the parent Sling.
 
@@ -251,6 +251,7 @@ func (s *IssueService) ListByRepo(owner, repo string, params *IssueListParams) (
 * Kala [ajvb/kala](https://github.com/ajvb/kala)
 * Parse [fergstar/go-parse](https://github.com/fergstar/go-parse)
 * Rdio [apriendeau/shares](https://github.com/apriendeau/shares)
+* Swagger Generator [swagger-api/swagger-codegen](https://github.com/swagger-api/swagger-codegen)
 * Twitter [dghubble/go-twitter](https://github.com/dghubble/go-twitter)
 
 Create a Pull Request to add a link to your own API.
