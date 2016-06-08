@@ -2,6 +2,7 @@ package sling
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"io/ioutil"
@@ -143,6 +144,20 @@ func (s *Sling) Add(key, value string) *Sling {
 func (s *Sling) Set(key, value string) *Sling {
 	s.header.Set(key, value)
 	return s
+}
+
+// SetBasicAuth sets the Authorization header to use HTTP Basic Authentication
+// with the provided username and password. With HTTP Basic Authentication
+// the provided username and password are not encrypted.
+func (s *Sling) SetBasicAuth(username, password string) *Sling {
+	return s.Set("Authorization", "Basic "+basicAuth(username, password))
+}
+
+// basicAuth returns the base64 encoded username:password for basic auth copied
+// from net/http.
+func basicAuth(username, password string) string {
+	auth := username + ":" + password
+	return base64.StdEncoding.EncodeToString([]byte(auth))
 }
 
 // Url

@@ -232,6 +232,34 @@ func TestSetHeader(t *testing.T) {
 	}
 }
 
+func TestBasicAuth(t *testing.T) {
+	cases := []struct {
+		sling        *Sling
+		expectedAuth []string
+	}{
+		// basic auth: username & password
+		{New().SetBasicAuth("Aladdin", "open sesame"), []string{"Aladdin", "open sesame"}},
+		// empty username
+		{New().SetBasicAuth("", "secret"), []string{"", "secret"}},
+		// empty password
+		{New().SetBasicAuth("admin", ""), []string{"admin", ""}},
+	}
+	for _, c := range cases {
+		req, err := c.sling.Request()
+		if err != nil {
+			t.Errorf("unexpected error when building Request with .SetBasicAuth()")
+		}
+		username, password, ok := req.BasicAuth()
+		if !ok {
+			t.Errorf("basic auth missing when expected")
+		}
+		auth := []string{username, password}
+		if !reflect.DeepEqual(c.expectedAuth, auth) {
+			t.Errorf("not DeepEqual: expected %v, got %v", c.expectedAuth, auth)
+		}
+	}
+}
+
 func TestQueryStructSetter(t *testing.T) {
 	cases := []struct {
 		sling           *Sling
