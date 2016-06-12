@@ -146,15 +146,15 @@ func (s *Sling) Set(key, value string) *Sling {
 	return s
 }
 
-// SetBasicAuth mimics http.Request.SetBasicAuth()
-// setting the basic auth headers for all requests
-// which is convenient when building API clients
+// SetBasicAuth sets the Authorization header to use HTTP Basic Authentication
+// with the provided username and password. With HTTP Basic Authentication
+// the provided username and password are not encrypted.
 func (s *Sling) SetBasicAuth(username, password string) *Sling {
 	return s.Set("Authorization", "Basic "+basicAuth(username, password))
 }
 
-// basicAuth copied from src/net/http/client.go
-// encodes username & password to base64
+// basicAuth returns the base64 encoded username:password for basic auth copied
+// from net/http.
 func basicAuth(username, password string) string {
 	auth := username + ":" + password
 	return base64.StdEncoding.EncodeToString([]byte(auth))
