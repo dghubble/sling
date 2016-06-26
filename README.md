@@ -254,6 +254,7 @@ func (s *IssueService) ListByRepo(owner, repo string, params *IssueListParams) (
 * Swagger Generator [swagger-api/swagger-codegen](https://github.com/swagger-api/swagger-codegen)
 * Twitter [dghubble/go-twitter](https://github.com/dghubble/go-twitter)
 * Hacker News [mirceamironenco/go-hackernews](https://github.com/mirceamironenco/go-hackernews)
+* Stacksmith [jesustinoco/go-smith](https://github.com/jesustinoco/go-smith)
 
 Create a Pull Request to add a link to your own API.
 
