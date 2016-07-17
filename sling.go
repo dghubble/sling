@@ -44,6 +44,8 @@ type Sling struct {
 	bodyForm interface{}
 	// simply assigned body
 	body io.ReadCloser
+	// flag to indent marshalled JSON
+	indentJSON bool
 }
 
 // New returns a new Sling with an http DefaultClient.
@@ -83,6 +85,7 @@ func (s *Sling) New() *Sling {
 		bodyJSON:     s.bodyJSON,
 		bodyForm:     s.bodyForm,
 		body:         s.body,
+		indentJSON:   s.indentJSON,
 	}
 }
 
@@ -223,6 +226,12 @@ func (s *Sling) BodyJSON(bodyJSON interface{}) *Sling {
 	return s
 }
 
+// IndentJSON sets whether BodyJSON indents the marshaled JSON
+func (s *Sling) IndentJSON(b bool) *Sling {
+	s.indentJSON = true
+	return s
+}
+
 // BodyForm sets the Sling's bodyForm. The value pointed to by the bodyForm
 // will be url encoded as the Body on new requests (see Request()).
 // The bodyStruct argument should be a pointer to a url tagged struct. See
@@ -305,7 +314,7 @@ func addQueryStructs(reqURL *url.URL, queryStructs []interface{}) error {
 // of new Requests.
 func (s *Sling) getRequestBody() (body io.Reader, err error) {
 	if s.bodyJSON != nil && s.header.Get(contentType) == jsonContentType {
-		body, err = encodeBodyJSON(s.bodyJSON)
+		body, err = encodeBodyJSON(s.bodyJSON, s.indentJSON)
 		if err != nil {
 			return nil, err
 		}
@@ -322,13 +331,18 @@ func (s *Sling) getRequestBody() (body io.Reader, err error) {
 
 // encodeBodyJSON JSON encodes the value pointed to by bodyJSON into an
 // io.Reader, typically for use as a Request Body.
-func encodeBodyJSON(bodyJSON interface{}) (io.Reader, error) {
+func encodeBodyJSON(bodyJSON interface{}, indent bool) (io.Reader, error) {
 	var buf = new(bytes.Buffer)
 	if bodyJSON != nil {
 		buf = &bytes.Buffer{}
 		err := json.NewEncoder(buf).Encode(bodyJSON)
 		if err != nil {
 			return nil, err
+		}
+		if indent {
+			indented := &bytes.Buffer{}
+			json.Indent(indented, buf.Bytes(), "", "  ")
+			buf = indented
 		}
 	}
 	return buf, nil

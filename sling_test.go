@@ -2,6 +2,7 @@ package sling
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -60,6 +61,7 @@ func TestSlingNew(t *testing.T) {
 		&Sling{bodyJSON: &FakeModel{Text: "a"}},
 		&Sling{bodyJSON: FakeModel{Text: "a"}},
 		&Sling{bodyJSON: nil},
+		&Sling{indentJSON: true},
 		New().Add("Content-Type", "application/json"),
 		New().Add("A", "B").Add("a", "c").New(),
 		New().Add("A", "B").New().Add("a", "c"),
@@ -104,6 +106,10 @@ func TestSlingNew(t *testing.T) {
 		// bodyForm should be copied
 		if child.bodyForm != sling.bodyForm {
 			t.Errorf("expected %v, got %v", sling.bodyForm, child.bodyForm)
+		}
+		// indentJSON should be copied
+		if child.indentJSON != sling.indentJSON {
+			t.Errorf("indentJSON was not copied. expected: %v, got %v", sling.indentJSON, child.indentJSON)
 		}
 	}
 }
@@ -335,6 +341,27 @@ func TestBodyJSONSetter(t *testing.T) {
 		} else if c.input == nil && sling.header.Get(contentType) != "" {
 			t.Errorf("did not expect a Content-Type header, got %s", sling.header.Get(contentType))
 		}
+	}
+}
+
+func TestIndentJSONSetter(t *testing.T) {
+	sling := New()
+	sling.IndentJSON(true)
+	sling.BodyJSON(&FakeModel{Text: "test"})
+	req, err := sling.Request()
+	if err != nil {
+		t.Errorf("unexpected error created request: %v", err)
+		return
+	}
+	bodyBytes, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		t.Errorf("unexpected error reading request body: %v", err)
+		return
+	}
+	indented := bytes.NewBuffer(nil)
+	err = json.Indent(indented, bodyBytes, "", "  ")
+	if indented.String() != string(bodyBytes) {
+		t.Errorf("body was not indented.  expected:\n%v\ngot:\n%v", string(bodyBytes), indented.String())
 	}
 }
 
