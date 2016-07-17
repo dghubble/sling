@@ -19,10 +19,16 @@ const (
 	formContentType = "application/x-www-form-urlencoded"
 )
 
+// Doer executes http requests.  It is implemented by *http.Client.  You can
+// wrap *http.Client with layers of Doers to form a stack of client-side middleware.
+type Doer interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
 // Sling is an HTTP Request builder and sender.
 type Sling struct {
 	// http Client for doing requests
-	httpClient *http.Client
+	doer Doer
 	// HTTP method (GET, POST, etc.)
 	method string
 	// raw url string for requests
@@ -42,7 +48,7 @@ type Sling struct {
 // New returns a new Sling with an http DefaultClient.
 func New() *Sling {
 	return &Sling{
-		httpClient:   http.DefaultClient,
+		doer:         http.DefaultClient,
 		method:       "GET",
 		header:       make(http.Header),
 		queryStructs: make([]interface{}, 0),
@@ -68,7 +74,7 @@ func (s *Sling) New() *Sling {
 		headerCopy[k] = v
 	}
 	return &Sling{
-		httpClient:   s.httpClient,
+		doer:         s.doer,
 		method:       s.method,
 		rawURL:       s.rawURL,
 		header:       headerCopy,
@@ -85,9 +91,18 @@ func (s *Sling) New() *Sling {
 // the http.DefaultClient will be used.
 func (s *Sling) Client(httpClient *http.Client) *Sling {
 	if httpClient == nil {
-		s.httpClient = http.DefaultClient
+		return s.Doer(http.DefaultClient)
+	}
+	return s.Doer(httpClient)
+}
+
+// Doer sets the doer used to execute http requests.  If nil,
+// http.DefaultClient will be used.
+func (s *Sling) Doer(doer Doer) *Sling {
+	if doer == nil {
+		s.doer = http.DefaultClient
 	} else {
-		s.httpClient = httpClient
+		s.doer = doer
 	}
 	return s
 }
@@ -367,7 +382,7 @@ func (s *Sling) Receive(successV, failureV interface{}) (*http.Response, error) 
 // are JSON decoded into the value pointed to by failureV.
 // Any error sending the request or decoding the response is returned.
 func (s *Sling) Do(req *http.Request, successV, failureV interface{}) (*http.Response, error) {
-	resp, err := s.httpClient.Do(req)
+	resp, err := s.doer.Do(req)
 	if err != nil {
 		return resp, err
 	}
