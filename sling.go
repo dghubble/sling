@@ -20,7 +20,8 @@ const (
 )
 
 // Doer executes http requests.  It is implemented by *http.Client.  You can
-// wrap *http.Client with layers of Doers to form a stack of client-side middleware.
+// wrap *http.Client with layers of Doers to form a stack of client-side
+// middleware.
 type Doer interface {
 	Do(req *http.Request) (*http.Response, error)
 }
@@ -96,8 +97,8 @@ func (s *Sling) Client(httpClient *http.Client) *Sling {
 	return s.Doer(httpClient)
 }
 
-// Doer sets the doer used to execute http requests.  If nil,
-// http.DefaultClient will be used.
+// Doer sets the custom Doer implementation used to do requests.
+// If a nil client is given, the http.DefaultClient will be used.
 func (s *Sling) Doer(doer Doer) *Sling {
 	if doer == nil {
 		s.doer = http.DefaultClient
