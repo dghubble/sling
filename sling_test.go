@@ -39,8 +39,8 @@ var modelA = FakeModel{Text: "note", FavoriteCount: 12}
 
 func TestNew(t *testing.T) {
 	sling := New()
-	if sling.doer != http.DefaultClient {
-		t.Errorf("expected %v, got %v", http.DefaultClient, sling.doer)
+	if sling.httpClient != http.DefaultClient {
+		t.Errorf("expected %v, got %v", http.DefaultClient, sling.httpClient)
 	}
 	if sling.header == nil {
 		t.Errorf("Header map not initialized with make")
@@ -52,8 +52,8 @@ func TestNew(t *testing.T) {
 
 func TestSlingNew(t *testing.T) {
 	cases := []*Sling{
-		&Sling{doer: &http.Client{}, method: "GET", rawURL: "http://example.com"},
-		&Sling{doer: nil, method: "", rawURL: "http://example.com"},
+		&Sling{httpClient: &http.Client{}, method: "GET", rawURL: "http://example.com"},
+		&Sling{httpClient: nil, method: "", rawURL: "http://example.com"},
 		&Sling{queryStructs: make([]interface{}, 0)},
 		&Sling{queryStructs: []interface{}{paramsA}},
 		&Sling{queryStructs: []interface{}{paramsA, paramsB}},
@@ -68,8 +68,8 @@ func TestSlingNew(t *testing.T) {
 	}
 	for _, sling := range cases {
 		child := sling.New()
-		if child.doer != sling.doer {
-			t.Errorf("expected %v, got %v", sling.doer, child.doer)
+		if child.httpClient != sling.httpClient {
+			t.Errorf("expected %v, got %v", sling.httpClient, child.httpClient)
 		}
 		if child.method != sling.method {
 			t.Errorf("expected %s, got %s", sling.method, child.method)
@@ -120,8 +120,8 @@ func TestClientSetter(t *testing.T) {
 	for _, c := range cases {
 		sling := New()
 		sling.Client(c.input)
-		if sling.doer != c.expected {
-			t.Errorf("input %v, expected %v, got %v", c.input, c.expected, sling.doer)
+		if sling.httpClient != c.expected {
+			t.Errorf("input %v, expected %v, got %v", c.input, c.expected, sling.httpClient)
 		}
 	}
 }
@@ -138,8 +138,8 @@ func TestDoerSetter(t *testing.T) {
 	for _, c := range cases {
 		sling := New()
 		sling.Doer(c.input)
-		if sling.doer != c.expected {
-			t.Errorf("input %v, expected %v, got %v", c.input, c.expected, sling.doer)
+		if sling.httpClient != c.expected {
+			t.Errorf("input %v, expected %v, got %v", c.input, c.expected, sling.httpClient)
 		}
 	}
 }

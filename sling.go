@@ -29,7 +29,7 @@ type Doer interface {
 // Sling is an HTTP Request builder and sender.
 type Sling struct {
 	// http Client for doing requests
-	doer Doer
+	httpClient Doer
 	// HTTP method (GET, POST, etc.)
 	method string
 	// raw url string for requests
@@ -49,7 +49,7 @@ type Sling struct {
 // New returns a new Sling with an http DefaultClient.
 func New() *Sling {
 	return &Sling{
-		doer:         http.DefaultClient,
+		httpClient:   http.DefaultClient,
 		method:       "GET",
 		header:       make(http.Header),
 		queryStructs: make([]interface{}, 0),
@@ -75,7 +75,7 @@ func (s *Sling) New() *Sling {
 		headerCopy[k] = v
 	}
 	return &Sling{
-		doer:         s.doer,
+		httpClient:   s.httpClient,
 		method:       s.method,
 		rawURL:       s.rawURL,
 		header:       headerCopy,
@@ -101,9 +101,9 @@ func (s *Sling) Client(httpClient *http.Client) *Sling {
 // If a nil client is given, the http.DefaultClient will be used.
 func (s *Sling) Doer(doer Doer) *Sling {
 	if doer == nil {
-		s.doer = http.DefaultClient
+		s.httpClient = http.DefaultClient
 	} else {
-		s.doer = doer
+		s.httpClient = doer
 	}
 	return s
 }
@@ -383,7 +383,7 @@ func (s *Sling) Receive(successV, failureV interface{}) (*http.Response, error) 
 // are JSON decoded into the value pointed to by failureV.
 // Any error sending the request or decoding the response is returned.
 func (s *Sling) Do(req *http.Request, successV, failureV interface{}) (*http.Response, error) {
-	resp, err := s.doer.Do(req)
+	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		return resp, err
 	}
