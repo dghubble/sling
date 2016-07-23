@@ -19,10 +19,17 @@ const (
 	formContentType = "application/x-www-form-urlencoded"
 )
 
+// Doer executes http requests.  It is implemented by *http.Client.  You can
+// wrap *http.Client with layers of Doers to form a stack of client-side
+// middleware.
+type Doer interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
 // Sling is an HTTP Request builder and sender.
 type Sling struct {
 	// http Client for doing requests
-	httpClient *http.Client
+	httpClient Doer
 	// HTTP method (GET, POST, etc.)
 	method string
 	// raw url string for requests
@@ -85,9 +92,18 @@ func (s *Sling) New() *Sling {
 // the http.DefaultClient will be used.
 func (s *Sling) Client(httpClient *http.Client) *Sling {
 	if httpClient == nil {
+		return s.Doer(http.DefaultClient)
+	}
+	return s.Doer(httpClient)
+}
+
+// Doer sets the custom Doer implementation used to do requests.
+// If a nil client is given, the http.DefaultClient will be used.
+func (s *Sling) Doer(doer Doer) *Sling {
+	if doer == nil {
 		s.httpClient = http.DefaultClient
 	} else {
-		s.httpClient = httpClient
+		s.httpClient = doer
 	}
 	return s
 }

@@ -69,7 +69,7 @@ func TestSlingNew(t *testing.T) {
 	for _, sling := range cases {
 		child := sling.New()
 		if child.httpClient != sling.httpClient {
-			t.Errorf("expected %p, got %p", sling.httpClient, child.httpClient)
+			t.Errorf("expected %v, got %v", sling.httpClient, child.httpClient)
 		}
 		if child.method != sling.method {
 			t.Errorf("expected %s, got %s", sling.method, child.method)
@@ -121,7 +121,25 @@ func TestClientSetter(t *testing.T) {
 		sling := New()
 		sling.Client(c.input)
 		if sling.httpClient != c.expected {
-			t.Errorf("expected %v, got %v", c.expected, sling.httpClient)
+			t.Errorf("input %v, expected %v, got %v", c.input, c.expected, sling.httpClient)
+		}
+	}
+}
+
+func TestDoerSetter(t *testing.T) {
+	developerClient := &http.Client{}
+	cases := []struct {
+		input    Doer
+		expected Doer
+	}{
+		{nil, http.DefaultClient},
+		{developerClient, developerClient},
+	}
+	for _, c := range cases {
+		sling := New()
+		sling.Doer(c.input)
+		if sling.httpClient != c.expected {
+			t.Errorf("input %v, expected %v, got %v", c.input, c.expected, sling.httpClient)
 		}
 	}
 }
