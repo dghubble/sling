@@ -228,7 +228,7 @@ func (s *Sling) BodyJSON(bodyJSON interface{}) *Sling {
 
 // IndentJSON sets whether BodyJSON indents the marshaled JSON
 func (s *Sling) IndentJSON(b bool) *Sling {
-	s.indentJSON = true
+	s.indentJSON = b
 	return s
 }
 

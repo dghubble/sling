@@ -346,23 +346,39 @@ func TestBodyJSONSetter(t *testing.T) {
 
 func TestIndentJSONSetter(t *testing.T) {
 	sling := New()
-	sling.IndentJSON(true)
 	sling.BodyJSON(&FakeModel{Text: "test"})
-	req, err := sling.Request()
-	if err != nil {
-		t.Errorf("unexpected error created request: %v", err)
-		return
+	isJSONIndented := func(expected bool) {
+		req, err := sling.Request()
+		if err != nil {
+			t.Fatalf("unexpected error created request: %v", err)
+		}
+		bodyBytes, err := ioutil.ReadAll(req.Body)
+		if err != nil {
+			t.Fatalf("unexpected error reading request body: %v", err)
+			return
+		}
+		indented := bytes.NewBuffer(nil)
+		err = json.Indent(indented, bodyBytes, "", "  ")
+		if err != nil {
+			t.Fatalf("unexpected error indenting body bytes: %v", err)
+		}
+		actual := indented.String() == string(bodyBytes)
+		if expected != actual {
+			if expected {
+				t.Errorf("expected body to be indented, but wasn't.  expected:\n%v\ngot:\n%v", string(bodyBytes), indented.String())
+			} else {
+				t.Errorf("expected body not to be indented, but was.  got:\n%v", string(bodyBytes))
+			}
+		}
 	}
-	bodyBytes, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		t.Errorf("unexpected error reading request body: %v", err)
-		return
-	}
-	indented := bytes.NewBuffer(nil)
-	err = json.Indent(indented, bodyBytes, "", "  ")
-	if indented.String() != string(bodyBytes) {
-		t.Errorf("body was not indented.  expected:\n%v\ngot:\n%v", string(bodyBytes), indented.String())
-	}
+	// by default, json is not indented
+	sling.IndentJSON(true)
+	isJSONIndented(true)
+
+	// now make sure we can turn it off
+	sling.IndentJSON(false)
+	isJSONIndented(false)
+
 }
 
 func TestBodyFormSetter(t *testing.T) {
