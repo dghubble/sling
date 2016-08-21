@@ -2,6 +2,7 @@ package sling
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -60,6 +61,7 @@ func TestSlingNew(t *testing.T) {
 		&Sling{bodyJSON: &FakeModel{Text: "a"}},
 		&Sling{bodyJSON: FakeModel{Text: "a"}},
 		&Sling{bodyJSON: nil},
+		&Sling{indentJSON: true},
 		New().Add("Content-Type", "application/json"),
 		New().Add("A", "B").Add("a", "c").New(),
 		New().Add("A", "B").New().Add("a", "c"),
@@ -104,6 +106,10 @@ func TestSlingNew(t *testing.T) {
 		// bodyForm should be copied
 		if child.bodyForm != sling.bodyForm {
 			t.Errorf("expected %v, got %v", sling.bodyForm, child.bodyForm)
+		}
+		// indentJSON should be copied
+		if child.indentJSON != sling.indentJSON {
+			t.Errorf("indentJSON was not copied. expected: %v, got %v", sling.indentJSON, child.indentJSON)
 		}
 	}
 }
@@ -336,6 +342,43 @@ func TestBodyJSONSetter(t *testing.T) {
 			t.Errorf("did not expect a Content-Type header, got %s", sling.header.Get(contentType))
 		}
 	}
+}
+
+func TestIndentJSONSetter(t *testing.T) {
+	sling := New()
+	sling.BodyJSON(&FakeModel{Text: "test"})
+	isJSONIndented := func(expected bool) {
+		req, err := sling.Request()
+		if err != nil {
+			t.Fatalf("unexpected error created request: %v", err)
+		}
+		bodyBytes, err := ioutil.ReadAll(req.Body)
+		if err != nil {
+			t.Fatalf("unexpected error reading request body: %v", err)
+			return
+		}
+		indented := bytes.NewBuffer(nil)
+		err = json.Indent(indented, bodyBytes, "", "  ")
+		if err != nil {
+			t.Fatalf("unexpected error indenting body bytes: %v", err)
+		}
+		actual := indented.String() == string(bodyBytes)
+		if expected != actual {
+			if expected {
+				t.Errorf("expected body to be indented, but wasn't.  expected:\n%v\ngot:\n%v", string(bodyBytes), indented.String())
+			} else {
+				t.Errorf("expected body not to be indented, but was.  got:\n%v", string(bodyBytes))
+			}
+		}
+	}
+	// by default, json is not indented
+	sling.IndentJSON(true)
+	isJSONIndented(true)
+
+	// now make sure we can turn it off
+	sling.IndentJSON(false)
+	isJSONIndented(false)
+
 }
 
 func TestBodyFormSetter(t *testing.T) {
