@@ -51,15 +51,17 @@ func TestNew(t *testing.T) {
 }
 
 func TestSlingNew(t *testing.T) {
+	fakeBodyProvider := JSONBody(FakeModel{})
+
 	cases := []*Sling{
 		&Sling{httpClient: &http.Client{}, method: "GET", rawURL: "http://example.com"},
 		&Sling{httpClient: nil, method: "", rawURL: "http://example.com"},
 		&Sling{queryStructs: make([]interface{}, 0)},
 		&Sling{queryStructs: []interface{}{paramsA}},
 		&Sling{queryStructs: []interface{}{paramsA, paramsB}},
-		&Sling{bodyJSON: &FakeModel{Text: "a"}},
-		&Sling{bodyJSON: FakeModel{Text: "a"}},
-		&Sling{bodyJSON: nil},
+		&Sling{bodyProvider: fakeBodyProvider},
+		&Sling{bodyProvider: fakeBodyProvider},
+		&Sling{bodyProvider: nil},
 		New().Add("Content-Type", "application/json"),
 		New().Add("A", "B").Add("a", "c").New(),
 		New().Add("A", "B").New().Add("a", "c"),
@@ -97,13 +99,9 @@ func TestSlingNew(t *testing.T) {
 				t.Errorf("child.queryStructs was a re-slice, expected slice with copied contents")
 			}
 		}
-		// bodyJSON should be copied
-		if child.bodyJSON != sling.bodyJSON {
-			t.Errorf("expected %v, got %v", sling.bodyJSON, child.bodyJSON)
-		}
-		// bodyForm should be copied
-		if child.bodyForm != sling.bodyForm {
-			t.Errorf("expected %v, got %v", sling.bodyForm, child.bodyForm)
+		// body should be copied
+		if child.bodyProvider != sling.bodyProvider {
+			t.Errorf("expected %v, got %v", sling.bodyProvider, child.bodyProvider)
 		}
 	}
 }
@@ -310,24 +308,26 @@ func TestQueryStructSetter(t *testing.T) {
 
 func TestBodyJSONSetter(t *testing.T) {
 	fakeModel := &FakeModel{}
+	fakeBodyProvider := JSONBody(fakeModel)
+
 	cases := []struct {
-		initial  interface{}
+		initial  BodyProvider
 		input    interface{}
-		expected interface{}
+		expected BodyProvider
 	}{
 		// json tagged struct is set as bodyJSON
-		{nil, fakeModel, fakeModel},
+		{nil, fakeModel, fakeBodyProvider},
 		// nil argument to bodyJSON does not replace existing bodyJSON
-		{fakeModel, nil, fakeModel},
+		{fakeBodyProvider, nil, fakeBodyProvider},
 		// nil bodyJSON remains nil
 		{nil, nil, nil},
 	}
 	for _, c := range cases {
 		sling := New()
-		sling.bodyJSON = c.initial
+		sling.bodyProvider = c.initial
 		sling.BodyJSON(c.input)
-		if sling.bodyJSON != c.expected {
-			t.Errorf("expected %v, got %v", c.expected, sling.bodyJSON)
+		if sling.bodyProvider != c.expected {
+			t.Errorf("expected %v, got %v", c.expected, sling.bodyProvider)
 		}
 		// Header Content-Type should be application/json if bodyJSON arg was non-nil
 		if c.input != nil && sling.header.Get(contentType) != jsonContentType {
@@ -339,24 +339,27 @@ func TestBodyJSONSetter(t *testing.T) {
 }
 
 func TestBodyFormSetter(t *testing.T) {
+	fakeParams := FakeParams{KindName: "recent", Count: 25}
+	fakeBodyProvider := FormBody(fakeParams)
+
 	cases := []struct {
-		initial  interface{}
+		initial  BodyProvider
 		input    interface{}
-		expected interface{}
+		expected BodyProvider
 	}{
 		// url tagged struct is set as bodyStruct
-		{nil, paramsB, paramsB},
+		{nil, paramsB, fakeBodyProvider},
 		// nil argument to bodyStruct does not replace existing bodyStruct
-		{paramsB, nil, paramsB},
+		{fakeBodyProvider, nil, fakeBodyProvider},
 		// nil bodyStruct remains nil
 		{nil, nil, nil},
 	}
 	for _, c := range cases {
 		sling := New()
-		sling.bodyForm = c.initial
+		sling.bodyProvider = c.initial
 		sling.BodyForm(c.input)
-		if sling.bodyForm != c.expected {
-			t.Errorf("expected %v, got %v", c.expected, sling.bodyForm)
+		if sling.bodyProvider != c.expected {
+			t.Errorf("expected %v, got %v", c.expected, sling.bodyProvider)
 		}
 		// Content-Type should be application/x-www-form-urlencoded if bodyStruct was non-nil
 		if c.input != nil && sling.header.Get(contentType) != formContentType {
@@ -369,29 +372,27 @@ func TestBodyFormSetter(t *testing.T) {
 }
 
 func TestBodySetter(t *testing.T) {
-	var testInput = ioutil.NopCloser(strings.NewReader("test"))
+	fakeInput := ioutil.NopCloser(strings.NewReader("test"))
+	fakeBodyProvider := ReaderBody(fakeInput)
+
 	cases := []struct {
-		initial  io.ReadCloser
+		initial  BodyProvider
 		input    io.Reader
-		expected io.Reader
+		expected BodyProvider
 	}{
 		// nil body is overriden by a set body
-		{nil, testInput, testInput},
+		{nil, fakeInput, fakeBodyProvider},
 		// initial body is not overriden by nil body
-		{testInput, nil, testInput},
+		{fakeBodyProvider, nil, fakeBodyProvider},
 		// nil body is returned unaltered
 		{nil, nil, nil},
 	}
 	for _, c := range cases {
 		sling := New()
-		sling.body = c.initial
+		sling.bodyProvider = c.initial
 		sling.Body(c.input)
-		body, err := sling.getRequestBody()
-		if err != nil {
-			t.Errorf("expected nil, got %v", err)
-		}
-		if body != c.expected {
-			t.Errorf("expected %v, got %v", c.expected, body)
+		if sling.bodyProvider != c.expected {
+			t.Errorf("expected %v, got %v", c.expected, sling.bodyProvider)
 		}
 	}
 }
