@@ -203,17 +203,27 @@ func (s *Sling) QueryStruct(queryStruct interface{}) *Sling {
 
 // Body
 
+// Body sets the Sling's body. The body value will be set as the Body on new
+// requests (see Request()).
+// If the provided body is also an io.Closer, the request Body will be closed
+// by http.Client methods.
+func (s *Sling) Body(body io.Reader) *Sling {
+	if body == nil {
+		return s
+	}
+	return s.BodyProvider(bodyProvider{body: body})
+}
+
 // BodyProvider sets the Sling's body provider.
 func (s *Sling) BodyProvider(body BodyProvider) *Sling {
 	if body == nil {
 		return s
 	}
-
 	s.bodyProvider = body
 
-	typ := body.ContentType()
-	if typ != "" {
-		s.Set(contentType, typ)
+	ct := body.ContentType()
+	if ct != "" {
+		s.Set(contentType, ct)
 	}
 
 	return s
@@ -224,7 +234,10 @@ func (s *Sling) BodyProvider(body BodyProvider) *Sling {
 // The bodyJSON argument should be a pointer to a JSON tagged struct. See
 // https://golang.org/pkg/encoding/json/#MarshalIndent for details.
 func (s *Sling) BodyJSON(bodyJSON interface{}) *Sling {
-	return s.BodyProvider(JSONBody(bodyJSON))
+	if bodyJSON == nil {
+		return s
+	}
+	return s.BodyProvider(jsonBodyProvider{payload: bodyJSON})
 }
 
 // BodyForm sets the Sling's bodyForm. The value pointed to by the bodyForm
@@ -232,18 +245,10 @@ func (s *Sling) BodyJSON(bodyJSON interface{}) *Sling {
 // The bodyForm argument should be a pointer to a url tagged struct. See
 // https://godoc.org/github.com/google/go-querystring/query for details.
 func (s *Sling) BodyForm(bodyForm interface{}) *Sling {
-	return s.BodyProvider(FormBody(bodyForm))
-}
-
-// Body sets the Sling's body. The body value will be set as the Body on new
-// requests (see Request()).
-// If the provided body is also an io.Closer, the request Body will be closed
-// by http.Client methods.
-func (s *Sling) Body(body io.Reader) *Sling {
-	if body == nil {
+	if bodyForm == nil {
 		return s
 	}
-	return s.BodyProvider(ReaderBody(body))
+	return s.BodyProvider(formBodyProvider{payload: bodyForm})
 }
 
 // Requests
@@ -256,12 +261,13 @@ func (s *Sling) Request() (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	err = addQueryStructs(reqURL, s.queryStructs)
 	if err != nil {
 		return nil, err
 	}
-	var body io.Reader
 
+	var body io.Reader
 	if s.bodyProvider != nil {
 		body, err = s.bodyProvider.Body()
 		if err != nil {

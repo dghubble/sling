@@ -51,7 +51,7 @@ func TestNew(t *testing.T) {
 }
 
 func TestSlingNew(t *testing.T) {
-	fakeBodyProvider := JSONBody(FakeModel{})
+	fakeBodyProvider := jsonBodyProvider{FakeModel{}}
 
 	cases := []*Sling{
 		&Sling{httpClient: &http.Client{}, method: "GET", rawURL: "http://example.com"},
@@ -308,7 +308,7 @@ func TestQueryStructSetter(t *testing.T) {
 
 func TestBodyJSONSetter(t *testing.T) {
 	fakeModel := &FakeModel{}
-	fakeBodyProvider := JSONBody(fakeModel)
+	fakeBodyProvider := jsonBodyProvider{payload: fakeModel}
 
 	cases := []struct {
 		initial  BodyProvider
@@ -340,7 +340,7 @@ func TestBodyJSONSetter(t *testing.T) {
 
 func TestBodyFormSetter(t *testing.T) {
 	fakeParams := FakeParams{KindName: "recent", Count: 25}
-	fakeBodyProvider := FormBody(fakeParams)
+	fakeBodyProvider := formBodyProvider{payload: fakeParams}
 
 	cases := []struct {
 		initial  BodyProvider
@@ -373,7 +373,7 @@ func TestBodyFormSetter(t *testing.T) {
 
 func TestBodySetter(t *testing.T) {
 	fakeInput := ioutil.NopCloser(strings.NewReader("test"))
-	fakeBodyProvider := ReaderBody(fakeInput)
+	fakeBodyProvider := bodyProvider{body: fakeInput}
 
 	cases := []struct {
 		initial  BodyProvider
