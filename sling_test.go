@@ -368,7 +368,6 @@ func TestBodyFormSetter(t *testing.T) {
 			t.Errorf("did not expect a Content-Type header, got %s", sling.header.Get(contentType))
 		}
 	}
-
 }
 
 func TestBodySetter(t *testing.T) {
@@ -712,26 +711,6 @@ func TestDo_onFailureWithNilValue(t *testing.T) {
 	expected := &FakeModel{}
 	if !reflect.DeepEqual(expected, model) {
 		t.Errorf("successV should not be populated, exepcted %v, got %v", expected, model)
-	}
-}
-
-func TestDo_skipDecodingIfContentTypeWrong(t *testing.T) {
-	client, mux, server := testServer()
-	defer server.Close()
-	mux.HandleFunc("/success", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprintf(w, `{"text": "Some text", "favorite_count": 24}`)
-	})
-
-	sling := New().Client(client)
-	req, _ := http.NewRequest("GET", "http://example.com/success", nil)
-
-	model := new(FakeModel)
-	sling.Do(req, model, nil)
-
-	expectedModel := &FakeModel{}
-	if !reflect.DeepEqual(expectedModel, model) {
-		t.Errorf("decoding should have been skipped, Content-Type was incorrect")
 	}
 }
 
