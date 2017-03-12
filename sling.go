@@ -358,7 +358,7 @@ func (s *Sling) Do(req *http.Request, successV, failureV interface{}) (*http.Res
 	}
 
 	// Decode from json
-	if successV != nil || failureV != nil) {
+	if successV != nil || failureV != nil {
 		err = decodeResponseJSON(resp, successV, failureV)
 	}
 	return resp, err
