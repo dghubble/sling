@@ -351,7 +351,14 @@ func (s *Sling) Do(req *http.Request, successV, failureV interface{}) (*http.Res
 	}
 	// when err is nil, resp contains a non-nil resp.Body which must be closed
 	defer resp.Body.Close()
-	if successV != nil || failureV != nil {
+
+	// Don't try to decode on 204s
+	if resp.StatusCode == 204 {
+		return resp, nil
+	}
+
+	// Decode from json
+	if successV != nil || failureV != nil) {
 		err = decodeResponseJSON(resp, successV, failureV)
 	}
 	return resp, err
