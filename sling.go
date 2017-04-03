@@ -331,20 +331,20 @@ func (s *Sling) ReceiveSuccess(successV interface{}) (*http.Response, error) {
 // other responses are JSON decoded into the value pointed to by failureV.
 // Any error creating the request, sending it, or decoding the response is
 // returned.
-// Receive is shorthand for calling Request and Do.
+// Receive is shorthand for calling Request and DoDecode.
 func (s *Sling) Receive(successV, failureV interface{}) (*http.Response, error) {
 	req, err := s.Request()
 	if err != nil {
 		return nil, err
 	}
-	return s.Do(req, successV, failureV)
+	return s.DoDecode(req, successV, failureV)
 }
 
-// Do sends an HTTP request and returns the response. Success responses (2XX)
+// DoDecode sends an HTTP request and returns the response. Success responses (2XX)
 // are JSON decoded into the value pointed to by successV and other responses
 // are JSON decoded into the value pointed to by failureV.
 // Any error sending the request or decoding the response is returned.
-func (s *Sling) Do(req *http.Request, successV, failureV interface{}) (*http.Response, error) {
+func (s *Sling) DoDecode(req *http.Request, successV, failureV interface{}) (*http.Response, error) {
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		return resp, err
@@ -362,6 +362,25 @@ func (s *Sling) Do(req *http.Request, successV, failureV interface{}) (*http.Res
 		err = decodeResponseJSON(resp, successV, failureV)
 	}
 	return resp, err
+}
+
+// DoRequest creates a new HTTP request, sends the request with the set Sling
+// http.Client, and returns the HTTP response. DoRequest is shorthand for
+// calling Request() and Do(req).
+// Callers must close response.Body when done reading from it.
+func (s *Sling) DoRequest() (*http.Response, error) {
+	req, err := s.Request()
+	if err != nil {
+		return nil, err
+	}
+	return s.Do(req)
+}
+
+// Do sends an HTTP request with the set Sling http.Client and returns an
+// HTTP response.
+// Callers must close response.Body when done reading from it.
+func (s *Sling) Do(req *http.Request) (*http.Response, error) {
+	return s.httpClient.Do(req)
 }
 
 // decodeResponse decodes response Body into the value pointed to by successV
