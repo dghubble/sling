@@ -18,7 +18,10 @@ const (
 )
 
 var (
+	// JSONDecoder implements decoding of the stream from the JSON
 	JSONDecoder = func(r io.Reader) Decoder { return json.NewDecoder(r) }
+
+	// XMLDecoder implements decoding of the stream from the XML
 	XMLDecoder = func(r io.Reader) Decoder { return xml.NewDecoder(r) }
 )
 
@@ -29,8 +32,10 @@ type Doer interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
+// DecodeHandler method that takes a stream and returns the interface Decoder
 type DecodeHandler func(r io.Reader) Decoder
 
+// A Decoder interface represents  parser reading a particular input stream.
 type Decoder interface {
 	Decode(v interface{}) error
 }
