@@ -54,14 +54,14 @@ func TestSlingNew(t *testing.T) {
 	fakeBodyProvider := jsonBodyProvider{FakeModel{}}
 
 	cases := []*Sling{
-		&Sling{httpClient: &http.Client{}, method: "GET", rawURL: "http://example.com"},
-		&Sling{httpClient: nil, method: "", rawURL: "http://example.com"},
-		&Sling{queryStructs: make([]interface{}, 0)},
-		&Sling{queryStructs: []interface{}{paramsA}},
-		&Sling{queryStructs: []interface{}{paramsA, paramsB}},
-		&Sling{bodyProvider: fakeBodyProvider},
-		&Sling{bodyProvider: fakeBodyProvider},
-		&Sling{bodyProvider: nil},
+		{httpClient: &http.Client{}, method: "GET", rawURL: "http://example.com"},
+		{httpClient: nil, method: "", rawURL: "http://example.com"},
+		{queryStructs: make([]interface{}, 0)},
+		{queryStructs: []interface{}{paramsA}},
+		{queryStructs: []interface{}{paramsA, paramsB}},
+		{bodyProvider: fakeBodyProvider},
+		{bodyProvider: fakeBodyProvider},
+		{bodyProvider: nil},
 		New().Add("Content-Type", "application/json"),
 		New().Add("A", "B").Add("a", "c").New(),
 		New().Add("A", "B").New().Add("a", "c"),
@@ -209,14 +209,14 @@ func TestAddHeader(t *testing.T) {
 		sling          *Sling
 		expectedHeader map[string][]string
 	}{
-		{New().Add("authorization", "OAuth key=\"value\""), map[string][]string{"Authorization": []string{"OAuth key=\"value\""}}},
+		{New().Add("authorization", "OAuth key=\"value\""), map[string][]string{"Authorization": {"OAuth key=\"value\""}}},
 		// header keys should be canonicalized
-		{New().Add("content-tYPE", "application/json").Add("User-AGENT", "sling"), map[string][]string{"Content-Type": []string{"application/json"}, "User-Agent": []string{"sling"}}},
+		{New().Add("content-tYPE", "application/json").Add("User-AGENT", "sling"), map[string][]string{"Content-Type": {"application/json"}, "User-Agent": {"sling"}}},
 		// values for existing keys should be appended
-		{New().Add("A", "B").Add("a", "c"), map[string][]string{"A": []string{"B", "c"}}},
+		{New().Add("A", "B").Add("a", "c"), map[string][]string{"A": {"B", "c"}}},
 		// Add should add to values for keys added by parent Slings
-		{New().Add("A", "B").Add("a", "c").New(), map[string][]string{"A": []string{"B", "c"}}},
-		{New().Add("A", "B").New().Add("a", "c"), map[string][]string{"A": []string{"B", "c"}}},
+		{New().Add("A", "B").Add("a", "c").New(), map[string][]string{"A": {"B", "c"}}},
+		{New().Add("A", "B").New().Add("a", "c"), map[string][]string{"A": {"B", "c"}}},
 	}
 	for _, c := range cases {
 		// type conversion from header to alias'd map for deep equality comparison
@@ -233,11 +233,11 @@ func TestSetHeader(t *testing.T) {
 		expectedHeader map[string][]string
 	}{
 		// should replace existing values associated with key
-		{New().Add("A", "B").Set("a", "c"), map[string][]string{"A": []string{"c"}}},
-		{New().Set("content-type", "A").Set("Content-Type", "B"), map[string][]string{"Content-Type": []string{"B"}}},
+		{New().Add("A", "B").Set("a", "c"), map[string][]string{"A": {"c"}}},
+		{New().Set("content-type", "A").Set("Content-Type", "B"), map[string][]string{"Content-Type": {"B"}}},
 		// Set should replace values received by copying parent Slings
-		{New().Set("A", "B").Add("a", "c").New(), map[string][]string{"A": []string{"B", "c"}}},
-		{New().Add("A", "B").New().Set("a", "c"), map[string][]string{"A": []string{"c"}}},
+		{New().Set("A", "B").Add("a", "c").New(), map[string][]string{"A": {"B", "c"}}},
+		{New().Add("A", "B").New().Set("a", "c"), map[string][]string{"A": {"c"}}},
 	}
 	for _, c := range cases {
 		// type conversion from Header to alias'd map for deep equality comparison
@@ -542,20 +542,20 @@ func TestRequest_headers(t *testing.T) {
 		sling          *Sling
 		expectedHeader map[string][]string
 	}{
-		{New().Add("authorization", "OAuth key=\"value\""), map[string][]string{"Authorization": []string{"OAuth key=\"value\""}}},
+		{New().Add("authorization", "OAuth key=\"value\""), map[string][]string{"Authorization": {"OAuth key=\"value\""}}},
 		// header keys should be canonicalized
-		{New().Add("content-tYPE", "application/json").Add("User-AGENT", "sling"), map[string][]string{"Content-Type": []string{"application/json"}, "User-Agent": []string{"sling"}}},
+		{New().Add("content-tYPE", "application/json").Add("User-AGENT", "sling"), map[string][]string{"Content-Type": {"application/json"}, "User-Agent": {"sling"}}},
 		// values for existing keys should be appended
-		{New().Add("A", "B").Add("a", "c"), map[string][]string{"A": []string{"B", "c"}}},
+		{New().Add("A", "B").Add("a", "c"), map[string][]string{"A": {"B", "c"}}},
 		// Add should add to values for keys added by parent Slings
-		{New().Add("A", "B").Add("a", "c").New(), map[string][]string{"A": []string{"B", "c"}}},
-		{New().Add("A", "B").New().Add("a", "c"), map[string][]string{"A": []string{"B", "c"}}},
+		{New().Add("A", "B").Add("a", "c").New(), map[string][]string{"A": {"B", "c"}}},
+		{New().Add("A", "B").New().Add("a", "c"), map[string][]string{"A": {"B", "c"}}},
 		// Add and Set
-		{New().Add("A", "B").Set("a", "c"), map[string][]string{"A": []string{"c"}}},
-		{New().Set("content-type", "A").Set("Content-Type", "B"), map[string][]string{"Content-Type": []string{"B"}}},
+		{New().Add("A", "B").Set("a", "c"), map[string][]string{"A": {"c"}}},
+		{New().Set("content-type", "A").Set("Content-Type", "B"), map[string][]string{"Content-Type": {"B"}}},
 		// Set should replace values received by copying parent Slings
-		{New().Set("A", "B").Add("a", "c").New(), map[string][]string{"A": []string{"B", "c"}}},
-		{New().Add("A", "B").New().Set("a", "c"), map[string][]string{"A": []string{"c"}}},
+		{New().Set("A", "B").Add("a", "c").New(), map[string][]string{"A": {"B", "c"}}},
+		{New().Add("A", "B").New().Set("a", "c"), map[string][]string{"A": {"c"}}},
 	}
 	for _, c := range cases {
 		req, _ := c.sling.Request()
@@ -604,7 +604,7 @@ func TestDo_onSuccess(t *testing.T) {
 	defer server.Close()
 	mux.HandleFunc("/success", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"text": "Some text", "favorite_count": 24}`)
+		fmt.Fprint(w, `{"text": "Some text", "favorite_count": 24}`)
 	})
 
 	sling := New().Client(client)
@@ -633,7 +633,7 @@ func TestDo_onSuccessWithNilValue(t *testing.T) {
 	defer server.Close()
 	mux.HandleFunc("/success", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"text": "Some text", "favorite_count": 24}`)
+		fmt.Fprint(w, `{"text": "Some text", "favorite_count": 24}`)
 	})
 
 	sling := New().Client(client)
@@ -654,16 +654,45 @@ func TestDo_onSuccessWithNilValue(t *testing.T) {
 	}
 }
 
+func TestDo_onSuccessWithXML(t *testing.T) {
+	client, mux, server := testServer()
+	defer server.Close()
+	mux.HandleFunc("/success", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, `<APIError><Text>Some text</Text><FavoriteCount>24</FavoriteCount></APIError`)
+	})
+
+	sling := New().Client(client)
+	req, _ := http.NewRequest("GET", "http://example.com/success", nil)
+
+	apiError := new(APIError)
+
+	sling.SetDecoder(XMLDecoder)
+
+	resp, err := sling.Do(req, nil, apiError)
+
+	if err != nil {
+		t.Errorf("expected nil, got %v", err)
+	}
+	if resp.StatusCode != 200 {
+		t.Errorf("expected %d, got %d", 200, resp.StatusCode)
+	}
+	expected := &APIError{}
+	if !reflect.DeepEqual(expected, apiError) {
+		t.Errorf("failureV should not be populated, exepcted %v, got %v", expected, apiError)
+	}
+}
+
 func TestDo_onFailure(t *testing.T) {
 	const expectedMessage = "Invalid argument"
-	const expectedCode int = 215
+	const expectedCode = 215
 
 	client, mux, server := testServer()
 	defer server.Close()
 	mux.HandleFunc("/failure", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(400)
-		fmt.Fprintf(w, `{"message": "Invalid argument", "code": 215}`)
+		fmt.Fprint(w, `{"message": "Invalid argument", "code": 215}`)
 	})
 
 	sling := New().Client(client)
@@ -687,13 +716,47 @@ func TestDo_onFailure(t *testing.T) {
 	}
 }
 
+func TestDo_onFailureXML(t *testing.T) {
+	const expectedMessage = "Invalid argument"
+	const expectedCode = 215
+
+	client, mux, server := testServer()
+	defer server.Close()
+	mux.HandleFunc("/failure", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(400)
+		fmt.Fprint(w, `<FakeModel><Message>Invalid argument</Message><Code>215</Code></FakeModel>`)
+	})
+
+	sling := New().Client(client)
+	req, _ := http.NewRequest("GET", "http://example.com/failure", nil)
+
+	model := new(FakeModel)
+	apiError := new(APIError)
+	sling.SetDecoder(XMLDecoder)
+	resp, err := sling.Do(req, model, apiError)
+
+	if err != nil {
+		t.Errorf("expected nil, got %v", err)
+	}
+	if resp.StatusCode != 400 {
+		t.Errorf("expected %d, got %d", 400, resp.StatusCode)
+	}
+	if apiError.Message != expectedMessage {
+		t.Errorf("expected %s, got %s", expectedMessage, apiError.Message)
+	}
+	if apiError.Code != expectedCode {
+		t.Errorf("expected %d, got %d", expectedCode, apiError.Code)
+	}
+}
+
 func TestDo_onFailureWithNilValue(t *testing.T) {
 	client, mux, server := testServer()
 	defer server.Close()
 	mux.HandleFunc("/failure", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(420)
-		fmt.Fprintf(w, `{"message": "Enhance your calm", "code": 88}`)
+		fmt.Fprint(w, `{"message": "Enhance your calm", "code": 88}`)
 	})
 
 	sling := New().Client(client)
@@ -722,7 +785,7 @@ func TestReceive_success(t *testing.T) {
 		assertQuery(t, map[string]string{"kind_name": "vanilla", "count": "11"}, r)
 		assertPostForm(t, map[string]string{"kind_name": "vanilla", "count": "11"}, r)
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"text": "Some text", "favorite_count": 24}`)
+		fmt.Fprint(w, `{"text": "Some text", "favorite_count": 24}`)
 	})
 
 	endpoint := New().Client(client).Base("http://example.com/").Path("foo/").Post("submit")
@@ -757,7 +820,7 @@ func TestReceive_failure(t *testing.T) {
 		assertPostForm(t, map[string]string{"kind_name": "vanilla", "count": "11"}, r)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(429)
-		fmt.Fprintf(w, `{"message": "Rate limit exceeded", "code": 88}`)
+		fmt.Fprint(w, `{"message": "Rate limit exceeded", "code": 88}`)
 	})
 
 	endpoint := New().Client(client).Base("http://example.com/").Path("foo/").Post("submit")
