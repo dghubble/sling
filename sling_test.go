@@ -590,8 +590,6 @@ func TestRequest_timeout(t *testing.T) {
 
 	var calledCancel bool
 	withTimeout = func(ctx context.Context, d time.Duration) (context.Context, context.CancelFunc) {
-		t.Helper()
-
 		if d != timeout {
 			t.Errorf("expected withTimeout to be called with %v, got %v", timeout, d)
 		}
