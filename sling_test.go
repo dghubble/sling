@@ -2,6 +2,7 @@ package sling
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -13,6 +14,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 type FakeParams struct {
@@ -272,6 +274,33 @@ func TestBasicAuth(t *testing.T) {
 		auth := []string{username, password}
 		if !reflect.DeepEqual(c.expectedAuth, auth) {
 			t.Errorf("not DeepEqual: expected %v, got %v", c.expectedAuth, auth)
+		}
+	}
+}
+
+
+func TestContext(t *testing.T) {
+	
+	deadlineContext, _ := context.WithDeadline(time.Now().Add(100*time.Second))
+	
+	cases := []struct {
+		sling        *Sling
+		expectedContext context.Context
+	}{
+		// basic background context
+		{New().Context(context.Background(), context.Background()},
+		// context with deadline
+		{New().Context(deadlineContext), deadlineContext},
+	}
+	for _, c := range cases {
+		req, err := c.sling.Request()
+		if err != nil {
+			t.Errorf("unexpected error when building Request with .Context()")
+		}
+		
+		ctx := req.Context()
+		if reflect.DeepEqual(c.expectedContext, ctx) {
+			t.Errorf("expected contexts to be the same")
 		}
 	}
 }
