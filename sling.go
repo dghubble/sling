@@ -256,14 +256,14 @@ func (s *Sling) BodyForm(bodyForm interface{}) *Sling {
 }
 
 // Context sets the Sling's context. A context carries around values
-// and cancelation for a request. The ctx argument should be a valid 
+// and cancelation for a request. The ctx argument should be a valid
 // context.Context object. See https://golang.org/pkg/context for details.
 func (s *Sling) Context(ctx context.Context) *Sling {
 	if ctx == nil {
 		return s
 	}
 	s.context = ctx
-	
+
 	return s
 }
 
