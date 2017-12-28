@@ -78,6 +78,7 @@ func (s *Sling) New() *Sling {
 		header:       headerCopy,
 		queryStructs: append([]interface{}{}, s.queryStructs...),
 		bodyProvider: s.bodyProvider,
+		context:      s.context,
 	}
 }
 
