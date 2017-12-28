@@ -281,7 +281,8 @@ func TestBasicAuth(t *testing.T) {
 func TestContext(t *testing.T) {
 
 	backgroundCtx := context.Background()
-	deadlineContext, _ := context.WithDeadline(context.Background(), time.Now().Add(5*time.Second))
+	deadlineContext, cancel := context.WithDeadline(context.Background(), time.Now().Add(5*time.Second))
+	defer cancel()
 
 	cases := []struct {
 		sling           *Sling
