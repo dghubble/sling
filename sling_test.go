@@ -278,17 +278,17 @@ func TestBasicAuth(t *testing.T) {
 	}
 }
 
-
 func TestContext(t *testing.T) {
-	
-	deadlineContext, _ := context.WithDeadline(time.Now().Add(100*time.Second))
-	
+
+	backgroundCtx := context.Background()
+	deadlineContext, _ := context.WithDeadline(context.Background(), time.Now().Add(5*time.Second))
+
 	cases := []struct {
-		sling        *Sling
+		sling           *Sling
 		expectedContext context.Context
 	}{
 		// basic background context
-		{New().Context(context.Background(), context.Background()},
+		{New().Context(backgroundCtx), backgroundCtx},
 		// context with deadline
 		{New().Context(deadlineContext), deadlineContext},
 	}
@@ -297,9 +297,9 @@ func TestContext(t *testing.T) {
 		if err != nil {
 			t.Errorf("unexpected error when building Request with .Context()")
 		}
-		
+
 		ctx := req.Context()
-		if reflect.DeepEqual(c.expectedContext, ctx) {
+		if !reflect.DeepEqual(c.expectedContext, ctx) {
 			t.Errorf("expected contexts to be the same")
 		}
 	}
