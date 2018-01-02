@@ -1,9 +1,11 @@
 package sling
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 
@@ -37,15 +39,18 @@ type Sling struct {
 	queryStructs []interface{}
 	// body provider
 	bodyProvider BodyProvider
+	// save response body after usage
+	saveResponseBody bool
 }
 
 // New returns a new Sling with an http DefaultClient.
 func New() *Sling {
 	return &Sling{
-		httpClient:   http.DefaultClient,
-		method:       "GET",
-		header:       make(http.Header),
-		queryStructs: make([]interface{}, 0),
+		httpClient:       http.DefaultClient,
+		method:           "GET",
+		header:           make(http.Header),
+		queryStructs:     make([]interface{}, 0),
+		saveResponseBody: false,
 	}
 }
 
@@ -68,12 +73,13 @@ func (s *Sling) New() *Sling {
 		headerCopy[k] = v
 	}
 	return &Sling{
-		httpClient:   s.httpClient,
-		method:       s.method,
-		rawURL:       s.rawURL,
-		header:       headerCopy,
-		queryStructs: append([]interface{}{}, s.queryStructs...),
-		bodyProvider: s.bodyProvider,
+		httpClient:       s.httpClient,
+		method:           s.method,
+		rawURL:           s.rawURL,
+		header:           headerCopy,
+		queryStructs:     append([]interface{}{}, s.queryStructs...),
+		bodyProvider:     s.bodyProvider,
+		saveResponseBody: s.saveResponseBody,
 	}
 }
 
@@ -316,6 +322,13 @@ func addHeaders(req *http.Request, header http.Header) {
 	}
 }
 
+// SaveResponseBody sets the flag to preserve or discard the response body after decode
+// the JSON payload
+func (s *Sling) SaveResponseBody() *Sling {
+	s.saveResponseBody = true
+	return s
+}
+
 // Sending
 
 // ReceiveSuccess creates a new HTTP request and returns the response. Success
@@ -359,7 +372,7 @@ func (s *Sling) Do(req *http.Request, successV, failureV interface{}) (*http.Res
 
 	// Decode from json
 	if successV != nil || failureV != nil {
-		err = decodeResponseJSON(resp, successV, failureV)
+		err = decodeResponseJSON(resp, successV, failureV, s.saveResponseBody)
 	}
 	return resp, err
 }
@@ -369,14 +382,14 @@ func (s *Sling) Do(req *http.Request, successV, failureV interface{}) (*http.Res
 // otherwise. If the successV or failureV argument to decode into is nil,
 // decoding is skipped.
 // Caller is responsible for closing the resp.Body.
-func decodeResponseJSON(resp *http.Response, successV, failureV interface{}) error {
+func decodeResponseJSON(resp *http.Response, successV, failureV interface{}, saveResponseBody bool) error {
 	if code := resp.StatusCode; 200 <= code && code <= 299 {
 		if successV != nil {
-			return decodeResponseBodyJSON(resp, successV)
+			return decodeResponseBodyJSON(resp, successV, saveResponseBody)
 		}
 	} else {
 		if failureV != nil {
-			return decodeResponseBodyJSON(resp, failureV)
+			return decodeResponseBodyJSON(resp, failureV, saveResponseBody)
 		}
 	}
 	return nil
@@ -384,7 +397,24 @@ func decodeResponseJSON(resp *http.Response, successV, failureV interface{}) err
 
 // decodeResponseBodyJSON JSON decodes a Response Body into the value pointed
 // to by v.
-// Caller must provide a non-nil v and close the resp.Body.
-func decodeResponseBodyJSON(resp *http.Response, v interface{}) error {
+// Caller must provide a non-nil v, the response reader is either consumed and
+// forgot or restored depending in the saveResponponseBody flag
+// Caller is responsible for closing the resp.Body.
+func decodeResponseBodyJSON(resp *http.Response, v interface{}, saveResponseBody bool) error {
+	if saveResponseBody {
+		// Read the content
+		var bodyBytes []byte
+		if resp.Body != nil {
+			bodyBytes, _ = ioutil.ReadAll(resp.Body)
+		}
+
+		err := json.NewDecoder(bytes.NewReader(bodyBytes)).Decode(v)
+
+		// Restore the io.ReadCloser to its original state
+		resp.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+		defer resp.Body.Close()
+		return err
+	}
+
 	return json.NewDecoder(resp.Body).Decode(v)
 }

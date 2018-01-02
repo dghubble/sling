@@ -748,6 +748,49 @@ func TestReceive_success(t *testing.T) {
 	}
 }
 
+func TestReceive_success_saveJSON(t *testing.T) {
+	client, mux, server := testServer()
+	defer server.Close()
+	expectedJSON := `{"text": "Some text", "favorite_count": 24}`
+
+	mux.HandleFunc("/foo/submit", func(w http.ResponseWriter, r *http.Request) {
+		assertMethod(t, "POST", r)
+		assertQuery(t, map[string]string{"kind_name": "vanilla", "count": "11"}, r)
+		assertPostForm(t, map[string]string{"kind_name": "vanilla", "count": "11"}, r)
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, expectedJSON)
+	})
+
+	endpoint := New().Client(client).Base("http://example.com/").Path("foo/").Post("submit")
+	// encode url-tagged struct in query params and as post body for testing purposes
+	params := FakeParams{KindName: "vanilla", Count: 11}
+	model := new(FakeModel)
+	apiError := new(APIError)
+	resp, err := endpoint.New().SaveResponseBody().QueryStruct(params).BodyForm(params).Receive(model, apiError)
+
+	if err != nil {
+		t.Errorf("expected nil, got %v", err)
+	}
+	if resp.StatusCode != 200 {
+		t.Errorf("expected %d, got %d", 200, resp.StatusCode)
+	}
+	expectedModel := &FakeModel{Text: "Some text", FavoriteCount: 24}
+	if !reflect.DeepEqual(expectedModel, model) {
+		t.Errorf("expected %v, got %v", expectedModel, model)
+	}
+	var bodyBytes []byte
+	if resp.Body != nil {
+		bodyBytes, _ = ioutil.ReadAll(resp.Body)
+	}
+	if strings.Compare(expectedJSON, string(bodyBytes)) != 0 {
+		t.Errorf("expected saved data %v, got %v", expectedJSON, string(bodyBytes))
+	}
+	expectedAPIError := &APIError{}
+	if !reflect.DeepEqual(expectedAPIError, apiError) {
+		t.Errorf("failureV should be zero valued, exepcted %v, got %v", expectedAPIError, apiError)
+	}
+}
+
 func TestReceive_failure(t *testing.T) {
 	client, mux, server := testServer()
 	defer server.Close()
