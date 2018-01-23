@@ -66,3 +66,14 @@ func (p formBodyProvider) Body() (io.Reader, error) {
 	}
 	return strings.NewReader(values.Encode()), nil
 }
+
+type BodyReceiver interface {
+	// FromBody deserialises the io.Reader body into dst
+	Receive(src io.Reader, dst interface{}) error
+}
+
+type jsonBodyReceiver struct{}
+
+func (jsonBodyReceiver) Receive(src io.Reader, dst interface{}) error {
+	return json.NewDecoder(src).Decode(dst)
+}
