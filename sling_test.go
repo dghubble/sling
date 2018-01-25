@@ -196,6 +196,9 @@ func TestMethodSetters(t *testing.T) {
 		{New().Put("http://a.io"), "PUT"},
 		{New().Patch("http://a.io"), "PATCH"},
 		{New().Delete("http://a.io"), "DELETE"},
+		{New().Options("http://a.io"), "OPTIONS"},
+		{New().Trace("http://a.io"), "TRACE"},
+		{New().Connect("http://a.io"), "CONNECT"},
 	}
 	for _, c := range cases {
 		if c.sling.method != c.expectedMethod {

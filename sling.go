@@ -137,6 +137,24 @@ func (s *Sling) Delete(pathURL string) *Sling {
 	return s.Path(pathURL)
 }
 
+// Options sets the Sling method to OPTIONS and sets the given pathURL.
+func (s *Sling) Options(pathURL string) *Sling {
+	s.method = "OPTIONS"
+	return s.Path(pathURL)
+}
+
+// Trace sets the Sling method to TRACE and sets the given pathURL.
+func (s *Sling) Trace(pathURL string) *Sling {
+	s.method = "TRACE"
+	return s.Path(pathURL)
+}
+
+// Connect sets the Sling method to CONNECT and sets the given pathURL.
+func (s *Sling) Connect(pathURL string) *Sling {
+	s.method = "CONNECT"
+	return s.Path(pathURL)
+}
+
 // Header
 
 // Add adds the key, value pair in Headers, appending values for existing keys

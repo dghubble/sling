@@ -45,7 +45,7 @@ Use `Path` to set or extend the URL for created Requests. Extension means the pa
 req, err := sling.New().Base("https://example.com/").Path("foo/").Path("bar").Request()
 ```
 
-Use `Get`, `Post`, `Put`, `Patch`, `Delete`, or `Head` which are exactly the same as `Path` except they set the HTTP method too.
+Use `Get`, `Post`, `Put`, `Patch`, `Delete`, `Head`, `Options`, `Trace`, or `Connect` which are exactly the same as `Path` except they set the HTTP method too.
 
 ```go
 req, err := sling.New().Post("http://upload.com/gophers")
