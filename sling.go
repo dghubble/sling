@@ -2,7 +2,6 @@ package sling
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"io"
 	"net/http"
 	"net/url"
@@ -37,6 +36,8 @@ type Sling struct {
 	queryStructs []interface{}
 	// body provider
 	bodyProvider BodyProvider
+	// creates a decoder for the response body
+	decoder Decoder
 }
 
 // New returns a new Sling with an http DefaultClient.
@@ -46,6 +47,7 @@ func New() *Sling {
 		method:       "GET",
 		header:       make(http.Header),
 		queryStructs: make([]interface{}, 0),
+		decoder:      &JSONDecoder{},
 	}
 }
 
@@ -74,6 +76,7 @@ func (s *Sling) New() *Sling {
 		header:       headerCopy,
 		queryStructs: append([]interface{}{}, s.queryStructs...),
 		bodyProvider: s.bodyProvider,
+		decoder:      s.decoder,
 	}
 }
 
@@ -318,6 +321,16 @@ func addHeaders(req *http.Request, header http.Header) {
 
 // Sending
 
+// Decoder sets the Sling's decoder. The decoder value will be used to create
+// new decoders for unmarshalling the JSON response body.
+func (s *Sling) Decoder(decoder Decoder) *Sling {
+	if decoder == nil {
+		return s
+	}
+	s.decoder = decoder
+	return s
+}
+
 // ReceiveSuccess creates a new HTTP request and returns the response. Success
 // responses (2XX) are JSON decoded into the value pointed to by successV.
 // Any error creating the request, sending it, or decoding a 2XX response
@@ -359,7 +372,7 @@ func (s *Sling) Do(req *http.Request, successV, failureV interface{}) (*http.Res
 
 	// Decode from json
 	if successV != nil || failureV != nil {
-		err = decodeResponseJSON(resp, successV, failureV)
+		err = s.decodeResponseJSON(resp, successV, failureV)
 	}
 	return resp, err
 }
@@ -369,14 +382,14 @@ func (s *Sling) Do(req *http.Request, successV, failureV interface{}) (*http.Res
 // otherwise. If the successV or failureV argument to decode into is nil,
 // decoding is skipped.
 // Caller is responsible for closing the resp.Body.
-func decodeResponseJSON(resp *http.Response, successV, failureV interface{}) error {
+func (s *Sling) decodeResponseJSON(resp *http.Response, successV, failureV interface{}) error {
 	if code := resp.StatusCode; 200 <= code && code <= 299 {
 		if successV != nil {
-			return decodeResponseBodyJSON(resp, successV)
+			return s.decodeResponseBodyJSON(resp, successV)
 		}
 	} else {
 		if failureV != nil {
-			return decodeResponseBodyJSON(resp, failureV)
+			return s.decodeResponseBodyJSON(resp, failureV)
 		}
 	}
 	return nil
@@ -385,6 +398,6 @@ func decodeResponseJSON(resp *http.Response, successV, failureV interface{}) err
 // decodeResponseBodyJSON JSON decodes a Response Body into the value pointed
 // to by v.
 // Caller must provide a non-nil v and close the resp.Body.
-func decodeResponseBodyJSON(resp *http.Response, v interface{}) error {
-	return json.NewDecoder(resp.Body).Decode(v)
+func (s *Sling) decodeResponseBodyJSON(resp *http.Response, v interface{}) error {
+	return s.decoder.Decode(resp.Body, v)
 }
