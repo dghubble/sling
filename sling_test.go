@@ -13,6 +13,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/dghubble/sling/tests"
 )
 
 type FakeParams struct {
@@ -791,6 +793,95 @@ func TestReceive_errorCreatingRequest(t *testing.T) {
 	}
 	if resp != nil {
 		t.Errorf("expected nil resp, got %v", resp)
+	}
+}
+
+func TestDecoder(t *testing.T) {
+	cases := []struct {
+		sling           *Sling
+		expectedDecoder Decoder
+	}{
+		{New(), &JSONDecoder{}},
+		{New().Decoder(&JSONPBDecoder{}), &JSONPBDecoder{}},
+	}
+	for _, c := range cases {
+		if c.sling.decoder != c.expectedDecoder {
+			t.Errorf("expected decoder %s, got %s", c.expectedDecoder, c.sling.decoder)
+		}
+	}
+}
+
+func TestDo_jsonpb_onSuccess(t *testing.T) {
+	expected := &test.AddressBook{
+		People: []*test.Person{
+			{
+				Name:  "Cody A. Ray",
+				Id:    7,
+				Email: "talktome@example.com",
+				Phones: []*test.Person_PhoneNumber{
+					{
+						Number: "555-555-5555",
+						Type:   test.Person_MOBILE,
+					},
+				},
+			},
+		},
+	}
+
+	client, mux, server := testServer()
+	defer server.Close()
+	mux.HandleFunc("/success", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"people":[{"name":"Cody A. Ray","id":7,"email":"talktome@example.com","phones":[{"number":"555-555-5555"}]}]}`)
+	})
+
+	sling := New().Client(client).Decoder(JSONPBDecoder{})
+	req, _ := http.NewRequest("GET", "http://example.com/success", nil)
+
+	actual := new(test.AddressBook)
+	apiError := new(APIError)
+	resp, err := sling.Do(req, actual, apiError)
+
+	if err != nil {
+		t.Errorf("expected nil, got %v", err)
+	}
+	if resp.StatusCode != 200 {
+		t.Errorf("expected %d, got %d", 200, resp.StatusCode)
+	}
+	if !reflect.DeepEqual(actual, expected) {
+		t.Errorf("expected %s, got %s", expected, actual)
+	}
+}
+
+func TestDo_jsonpb_onFailure(t *testing.T) {
+	expected := &test.APIError{
+		Code:    215,
+		Message: "Invalid argument",
+	}
+
+	client, mux, server := testServer()
+	defer server.Close()
+	mux.HandleFunc("/failure", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(400)
+		fmt.Fprintf(w, `{"message": "Invalid argument", "code": 215}`)
+	})
+
+	sling := New().Client(client)
+	req, _ := http.NewRequest("GET", "http://example.com/failure", nil)
+
+	model := new(test.AddressBook)
+	apiError := new(test.APIError)
+	resp, err := sling.Do(req, model, apiError)
+
+	if err != nil {
+		t.Errorf("expected nil, got %v", err)
+	}
+	if resp.StatusCode != 400 {
+		t.Errorf("expected %d, got %d", 400, resp.StatusCode)
+	}
+	if !reflect.DeepEqual(apiError, expected) {
+		t.Errorf("expected %s, got %s", expected, apiError)
 	}
 }
 

@@ -146,6 +146,51 @@ req, err := sling.New().Base("https://example.com").Body(body).Request()
 
 Set a content type header, if desired (e.g. `Set("Content-Type", "text/plain")`).
 
+### Custom Decoders
+
+If you use don't use JSON or need custom JSON parsing, you can specify an alternative decoder.
+
+#### Protobuf JSON
+
+Pretend Github provided you with the following protobuf definitions:
+
+```proto
+syntax = "proto3";
+
+package github;
+
+message Issue {
+    string title = 1;
+    string body = 2;
+}
+
+message GithubResourceError {
+    string resource = 1;
+    string field = 2;
+    string code = 3;
+}
+
+message GithubError {
+    string message = 1;
+    repeated GithubResourceError error = 2;
+    string documentation_url = 3;
+}
+```
+
+You can use the provided `JSONPBDecoder{}` rather than defining structs for each message:
+
+```go
+githubBase = githubBase.New().Decoder(JSONPBDecoder{})
+
+issues := new([]github.Issue)
+githubError := new(github.GithubError)
+resp, err := githubBase.New().Get(path).QueryStruct(params).Receive(issues, githubError)
+fmt.Println(issues, githubError, resp, err)
+```
+
+If you need a different variant, implementing your own decoder is easy.
+See [./decoders.go](./decoders.go) for examples.
+
 ### Extend a Sling
 
 Each Sling creates a standard `http.Request` (e.g. with some path and query
