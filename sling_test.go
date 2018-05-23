@@ -1,7 +1,9 @@
 package sling
 
 import (
+	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -13,6 +15,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 type FakeParams struct {
@@ -565,6 +568,113 @@ func TestRequest_headers(t *testing.T) {
 			t.Errorf("not DeepEqual: expected %v, got %v", c.expectedHeader, headerMap)
 		}
 	}
+}
+
+func TestRequest_context(t *testing.T) {
+	type key string
+	ctx := context.WithValue(context.Background(), key("foo"), "bar")
+	sling := New().Context(ctx)
+	req, _ := sling.Request()
+	if req.Context().Value(key("foo")) != "bar" {
+		t.Errorf("Context method didn't set the context on the resulting Request")
+	}
+}
+
+func TestRequest_timeout(t *testing.T) {
+	oldWithTimeout := withTimeout
+	defer func() { withTimeout = oldWithTimeout }()
+
+	timeout := 13 * time.Second
+
+	type key string
+
+	var calledCancel bool
+	withTimeout = func(ctx context.Context, d time.Duration) (context.Context, context.CancelFunc) {
+		if d != timeout {
+			t.Errorf("expected withTimeout to be called with %v, got %v", timeout, d)
+		}
+
+		return context.WithValue(ctx, key("foo"), "bar"), func() {
+			calledCancel = true
+		}
+	}
+
+	sling := New().Timeout(timeout)
+	req, _ := sling.Request()
+	if req.Context().Value(key("foo")) != "bar" {
+		t.Errorf("Context method didn't set the context on the resulting Request")
+	}
+
+	for _, testCase := range []struct {
+		name string
+		doer doerFunc
+	}{
+		{
+			"success",
+			func(req *http.Request) (*http.Response, error) {
+				return testResponse(400, ""), nil
+			},
+		},
+		{
+			"error",
+			func(req *http.Request) (*http.Response, error) {
+				return nil, errors.New("test")
+			},
+		},
+		{
+			"204",
+			func(req *http.Request) (*http.Response, error) {
+				return testResponse(204, ""), nil
+			},
+		},
+	} {
+		t.Run("called cancel on "+testCase.name, func(t *testing.T) {
+			calledCancel = false
+			sling.Doer(doerFunc(testCase.doer)).Do(req, nil, nil)
+			if !calledCancel {
+				t.Error("cancel wasn't called")
+			}
+		})
+	}
+}
+
+func TestRequest_reused_context(t *testing.T) {
+	var err error
+
+	func() {
+		defer func() {
+			err = recover().(error)
+		}()
+		New().Context(context.Background()).New()
+	}()
+
+	if errContextReused != err {
+		t.Errorf("expected panic with error %v, got %v", errContextReused, err)
+	}
+}
+
+type doerFunc func(req *http.Request) (*http.Response, error)
+
+func (f doerFunc) Do(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
+func testResponse(status int, body string) *http.Response {
+	req, _ := http.NewRequest("GET", "http://example.com", nil)
+
+	header := fmt.Sprintf(`HTTP/1.1 %d Ignored
+Connection: close
+Content-Type: text/plain
+Content-Length: %d
+
+`, status, len(body))
+	header = strings.Replace(header, "\n", "\r\n", -1)
+
+	resp, err := http.ReadResponse(bufio.NewReader(strings.NewReader(header+body)), req)
+	if err != nil {
+		panic(err)
+	}
+	return resp
 }
 
 func TestAddQueryStructs(t *testing.T) {
