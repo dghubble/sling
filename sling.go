@@ -1,6 +1,7 @@
 package sling
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"io"
@@ -37,6 +38,8 @@ type Sling struct {
 	queryStructs []interface{}
 	// body provider
 	bodyProvider BodyProvider
+	// context for passing around cancelation and values
+	context context.Context
 }
 
 // New returns a new Sling with an http DefaultClient.
@@ -46,6 +49,7 @@ func New() *Sling {
 		method:       "GET",
 		header:       make(http.Header),
 		queryStructs: make([]interface{}, 0),
+		context:      context.Background(),
 	}
 }
 
@@ -74,6 +78,7 @@ func (s *Sling) New() *Sling {
 		header:       headerCopy,
 		queryStructs: append([]interface{}{}, s.queryStructs...),
 		bodyProvider: s.bodyProvider,
+		context:      s.context,
 	}
 }
 
@@ -250,6 +255,18 @@ func (s *Sling) BodyForm(bodyForm interface{}) *Sling {
 	return s.BodyProvider(formBodyProvider{payload: bodyForm})
 }
 
+// Context sets the Sling's context. A context carries around values
+// and cancelation for a request. The ctx argument should be a valid
+// context.Context object. See https://golang.org/pkg/context for details.
+func (s *Sling) Context(ctx context.Context) *Sling {
+	if ctx == nil {
+		return s
+	}
+	s.context = ctx
+
+	return s
+}
+
 // Requests
 
 // Request returns a new http.Request created with the Sling properties.
@@ -278,6 +295,7 @@ func (s *Sling) Request() (*http.Request, error) {
 		return nil, err
 	}
 	addHeaders(req, s.header)
+	req = req.WithContext(s.context)
 	return req, err
 }
 
