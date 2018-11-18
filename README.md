@@ -1,4 +1,4 @@
-# Sling [![Build Status](https://travis-ci.org/dghubble/sling.png?branch=master)](https://travis-ci.org/dghubble/sling) [![GoDoc](https://godoc.org/github.com/dghubble/sling?status.png)](https://godoc.org/github.com/dghubble/sling)
+# Sling [![Build Status](https://travis-ci.org/dghubble/sling.svg?branch=master)](https://travis-ci.org/dghubble/sling) [![GoDoc](https://godoc.org/github.com/dghubble/sling?status.svg)](https://godoc.org/github.com/dghubble/sling)
 <img align="right" src="https://storage.googleapis.com/dghubble/small-gopher-with-sling.png">
 
 Sling is a Go HTTP client library for creating and sending API requests.
@@ -16,7 +16,9 @@ Slings store HTTP Request properties to simplify sending requests and decoding r
 
 ## Install
 
-    go get github.com/dghubble/sling
+```
+go get github.com/dghubble/sling
+```
 
 ## Documentation
 
