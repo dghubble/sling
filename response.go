@@ -6,8 +6,8 @@ import (
 )
 
 // ResponseDecoder decodes http responses into struct values.
-// Decode decodes the response into the value pointed to by v.
 type ResponseDecoder interface {
+	// Decode decodes the response into the value pointed to by v.
 	Decode(resp *http.Response, v interface{}) error
 }
 
@@ -15,7 +15,7 @@ type ResponseDecoder interface {
 type jsonDecoder struct {
 }
 
-// Decode the Response Body into the value pointed to by v.
+// Decode decodes the Response Body into the value pointed to by v.
 // Caller must provide a non-nil v and close the resp.Body.
 func (d jsonDecoder) Decode(resp *http.Response, v interface{}) error {
 	return json.NewDecoder(resp.Body).Decode(v)
