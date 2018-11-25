@@ -9,3 +9,5 @@ install:
   - go get -v -t .
 script:
   - ./test
+notifications:
+  email: change
