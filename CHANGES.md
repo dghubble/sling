@@ -4,6 +4,8 @@ Notable changes between releases.
 
 ## Latest
 
+* Add Sling `ResponseDecoder` setter for receiving responses with a custom `ResponseDecoder` ([#49](https://github.com/dghubble/sling/pull/49))
+
 ## v1.2.0
 
 * Add `Connect`, `Options`, and `Trace` HTTP methods ([c51967](https://github.com/dghubble/sling/commit/c519674860ff275e0ceb12caf5d87b31765c4e71))
