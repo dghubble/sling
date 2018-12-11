@@ -31,9 +31,9 @@ var paramsB = FakeParams{KindName: "recent", Count: 25}
 
 // Json/XML-tagged model struct
 type FakeModel struct {
-	Text          string  `json:"text,omitempty" xml:"text"`
-	FavoriteCount int64   `json:"favorite_count,omitempty" xml:"favorite_count"`
-	Temperature   float64 `json:"temperature,omitempty" xml:"temperature"`
+	Text          string  `json:"text,omitempty" xml:"text,omitempty"`
+	FavoriteCount int64   `json:"favorite_count,omitempty" xml:"favorite_count,omitempty"`
+	Temperature   float64 `json:"temperature,omitempty" xml:"temperature,omitempty"`
 }
 
 var modelA = FakeModel{Text: "note", FavoriteCount: 12}
@@ -349,6 +349,38 @@ func TestBodyJSONSetter(t *testing.T) {
 	}
 }
 
+func TestBodyXMLSetter(t *testing.T) {
+	fakeModel := &FakeModel{}
+	fakeBodyProvider := xmlBodyProvider{payload: fakeModel}
+
+	cases := []struct {
+		initial  BodyProvider
+		input    interface{}
+		expected BodyProvider
+	}{
+		// xml tagged struct is set as bodyXML
+		{nil, fakeModel, fakeBodyProvider},
+		// nil argument to bodyXML does not replace existing bodyXML
+		{fakeBodyProvider, nil, fakeBodyProvider},
+		// nil bodyXML remains nil
+		{nil, nil, nil},
+	}
+	for _, c := range cases {
+		sling := New()
+		sling.bodyProvider = c.initial
+		sling.BodyXML(c.input)
+		if sling.bodyProvider != c.expected {
+			t.Errorf("expected %v, got %v", c.expected, sling.bodyProvider)
+		}
+		// Header Content-Type should be application/xml if bodyXML arg was non-nil
+		if c.input != nil && sling.header.Get(contentType) != xmlContentType {
+			t.Errorf("Incorrect or missing header, expected %s, got %s", xmlContentType, sling.header.Get(contentType))
+		} else if c.input == nil && sling.header.Get(contentType) != "" {
+			t.Errorf("did not expect a Content-Type header, got %s", sling.header.Get(contentType))
+		}
+	}
+}
+
 func TestBodyFormSetter(t *testing.T) {
 	fakeParams := FakeParams{KindName: "recent", Count: 25}
 	fakeBodyProvider := formBodyProvider{payload: fakeParams}
@@ -480,6 +512,13 @@ func TestRequest_body(t *testing.T) {
 		{New().BodyJSON(FakeModel{}), "{}\n", jsonContentType},
 		// BodyJSON overrides existing values
 		{New().BodyJSON(&FakeModel{}).BodyJSON(&FakeModel{Text: "msg"}), "{\"text\":\"msg\"}\n", jsonContentType},
+		// BodyXML
+		{New().BodyXML(modelA), "<FakeModel><text>note</text><favorite_count>12</favorite_count></FakeModel>", xmlContentType},
+		{New().BodyXML(&modelA), "<FakeModel><text>note</text><favorite_count>12</favorite_count></FakeModel>", xmlContentType},
+		{New().BodyXML(&FakeModel{}), "<FakeModel></FakeModel>", xmlContentType},
+		{New().BodyXML(FakeModel{}), "<FakeModel></FakeModel>", xmlContentType},
+		// BodyXML overrides existing values
+		{New().BodyXML(&FakeModel{}).BodyXML(&FakeModel{Text: "msg"}), "<FakeModel><text>msg</text></FakeModel>", xmlContentType},
 		// BodyForm
 		{New().BodyForm(paramsA), "limit=30", formContentType},
 		{New().BodyForm(paramsB), "count=25&kind_name=recent", formContentType},

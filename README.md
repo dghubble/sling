@@ -11,7 +11,7 @@ Slings store HTTP Request properties to simplify sending requests and decoding r
 * Add or Set Request Headers
 * Base/Path: Extend a Sling for different endpoints
 * Encode structs into URL query parameters
-* Encode a form or JSON into the Request Body
+* Encode a form, JSON or XML into the Request Body
 * Receive JSON success or failure responses
 
 ## Install
@@ -116,6 +116,33 @@ req, err := githubBase.New().Post(path).BodyJSON(body).Request()
 ```
 
 Requests will include an `application/json` Content-Type header.
+
+#### XML Body
+
+Define [XML tagged structs](https://golang.org/pkg/encoding/xml/). Use `BodyXML` to XML encode a struct as the Body on requests.
+
+```go
+type IssueRequest struct {
+    Title     string   `xml:"title,omitempty"`
+    Body      string   `xml:"body,omitempty"`
+    Assignee  string   `xml:"assignee,omitempty"`
+    Milestone int      `xml:"milestone,omitempty"`
+    Labels    []string `xml:"labels,omitempty"`
+}
+```
+
+```go
+githubBase := sling.New().Base("https://api.github.com/").Client(httpClient)
+path := fmt.Sprintf("repos/%s/%s/issues", owner, repo)
+
+body := &IssueRequest{
+    Title: "Test title",
+    Body:  "Some issue",
+}
+req, err := githubBase.New().Post(path).BodyXML(body).Request()
+```
+
+Requests will include an `application/xml` Content-Type header.
 
 #### Form Body
 

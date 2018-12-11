@@ -13,6 +13,7 @@ const (
 	contentType     = "Content-Type"
 	jsonContentType = "application/json"
 	formContentType = "application/x-www-form-urlencoded"
+	xmlContentType  = "application/xml"
 )
 
 // Doer executes http requests.  It is implemented by *http.Client.  You can
@@ -269,6 +270,17 @@ func (s *Sling) BodyForm(bodyForm interface{}) *Sling {
 		return s
 	}
 	return s.BodyProvider(formBodyProvider{payload: bodyForm})
+}
+
+// BodyXML sets the Sling's bodyXML. The value pointed to by the bodyXML
+// will be XML encoded as the Body on new requests (see Request()).
+// The bodyXML argument should be a pointer to a XML tagged struct. See
+// https://golang.org/pkg/encoding/xml/#MarshalIndent for details.
+func (s *Sling) BodyXML(bodyXML interface{}) *Sling {
+	if bodyXML == nil {
+		return s
+	}
+	return s.BodyProvider(xmlBodyProvider{payload: bodyXML})
 }
 
 // Requests

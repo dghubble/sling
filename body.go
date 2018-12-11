@@ -3,6 +3,7 @@ package sling
 import (
 	"bytes"
 	"encoding/json"
+	"encoding/xml"
 	"io"
 	"strings"
 
@@ -65,4 +66,23 @@ func (p formBodyProvider) Body() (io.Reader, error) {
 		return nil, err
 	}
 	return strings.NewReader(values.Encode()), nil
+}
+
+// xmlBodyProvider encodes a XML tagged struct value as a Body for requests.
+// See https://golang.org/pkg/encoding/xml/#MarshalIndent for details.
+type xmlBodyProvider struct {
+	payload interface{}
+}
+
+func (p xmlBodyProvider) ContentType() string {
+	return xmlContentType
+}
+
+func (p xmlBodyProvider) Body() (io.Reader, error) {
+	buf := &bytes.Buffer{}
+	err := xml.NewEncoder(buf).Encode(p.payload)
+	if err != nil {
+		return nil, err
+	}
+	return buf, nil
 }
