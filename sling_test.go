@@ -38,13 +38,6 @@ type FakeModel struct {
 
 var modelA = FakeModel{Text: "note", FavoriteCount: 12}
 
-// Non-Json response decoder
-type xmlResponseDecoder struct{}
-
-func (d xmlResponseDecoder) Decode(resp *http.Response, v interface{}) error {
-	return xml.NewDecoder(resp.Body).Decode(v)
-}
-
 func TestNew(t *testing.T) {
 	sling := New()
 	if sling.httpClient != http.DefaultClient {
@@ -878,6 +871,68 @@ func TestReceive_errorCreatingRequest(t *testing.T) {
 	if resp != nil {
 		t.Errorf("expected nil resp, got %v", resp)
 	}
+}
+
+func TestWithXMLResponse(t *testing.T) {
+	client, mux, server := testServer()
+	defer server.Close()
+	mux.HandleFunc("/foo/submit", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/xml")
+		fmt.Fprintf(w, "<response><text>Some text</text><favorite_count>24</favorite_count><temperature>10.5</temperature></response>")
+	})
+
+	endpoint := New().Client(client).Base("http://example.com/").Path("foo/").Post("submit")
+
+	model := new(FakeModel)
+	apiError := new(APIError)
+	resp, err := endpoint.New().WithXMLResponse().Receive(model, apiError)
+
+	if err != nil {
+		t.Errorf("expected nil, got %v", err)
+	}
+	if resp.StatusCode != 200 {
+		t.Errorf("expected %d, got %d", 200, resp.StatusCode)
+	}
+	expectedModel := &FakeModel{Text: "Some text", FavoriteCount: 24, Temperature: 10.5}
+	if !reflect.DeepEqual(expectedModel, model) {
+		t.Errorf("expected %v, got %v", expectedModel, model)
+	}
+	expectedAPIError := &APIError{}
+	if !reflect.DeepEqual(expectedAPIError, apiError) {
+		t.Errorf("failureV should be zero valued, expected %v, got %v", expectedAPIError, apiError)
+	}
+
+}
+
+func TestWithJSONResponse(t *testing.T) {
+	client, mux, server := testServer()
+	defer server.Close()
+	mux.HandleFunc("/foo/submit", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"text": "Some text", "favorite_count": 24, "temperature": 10.5}`)
+	})
+
+	endpoint := New().Client(client).Base("http://example.com/").Path("foo/").Post("submit")
+
+	model := new(FakeModel)
+	apiError := new(APIError)
+	resp, err := endpoint.New().WithXMLResponse().WithJSONResponse().Receive(model, apiError)
+
+	if err != nil {
+		t.Errorf("expected nil, got %v", err)
+	}
+	if resp.StatusCode != 200 {
+		t.Errorf("expected %d, got %d", 200, resp.StatusCode)
+	}
+	expectedModel := &FakeModel{Text: "Some text", FavoriteCount: 24, Temperature: 10.5}
+	if !reflect.DeepEqual(expectedModel, model) {
+		t.Errorf("expected %v, got %v", expectedModel, model)
+	}
+	expectedAPIError := &APIError{}
+	if !reflect.DeepEqual(expectedAPIError, apiError) {
+		t.Errorf("failureV should be zero valued, expected %v, got %v", expectedAPIError, apiError)
+	}
+
 }
 
 // Testing Utils

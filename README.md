@@ -243,6 +243,42 @@ fmt.Println(issues, githubError, resp, err)
 
 Pass a nil `successV` or `failureV` argument to skip JSON decoding into that value.
 
+#### WithXMLResponse
+
+By default sling expected JSON response from server, but you can switch it to XML response.  
+Define an XML struct to receive response and use verb WithXMLResponse to tell Sling use xml decoder.
+
+```go
+// Github Issue (abbreviated)
+type Issue struct {
+    Title  string `xml:"title"`
+    Body   string `xml:"body"`
+}
+```
+
+```go
+issues := new([]Issue)
+resp, err := githubBase.New().Get(path).WithXMLResponse().ReceiveSuccess(issues)
+fmt.Println(issues, resp, err)
+```
+
+#### WithJSONResponse
+
+For symmetry there is WithJSONResponse method, that allows to switch back to JSON response.
+
+#### ResponseDecoder
+
+If API have some other response type, it's possible to add custom response decoder with method ResponseDecoder.  
+Decoder should follow ResponseDecoder interface.
+
+```go
+// ResponseDecoder decodes http responses into struct values.
+type ResponseDecoder interface {
+	// Decode decodes the response into the value pointed to by v.
+	Decode(resp *http.Response, v interface{}) error
+}
+```
+
 ### Modify a Request
 
 Sling provides the raw http.Request so modifications can be made using standard net/http features. For example, in Go 1.7+ , add HTTP tracing to a request with a context:

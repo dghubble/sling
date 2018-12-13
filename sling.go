@@ -48,7 +48,7 @@ func New() *Sling {
 		method:          "GET",
 		header:          make(http.Header),
 		queryStructs:    make([]interface{}, 0),
-		responseDecoder: jsonDecoder{},
+		responseDecoder: jsonResponseDecoder{},
 	}
 }
 
@@ -358,6 +358,16 @@ func (s *Sling) ResponseDecoder(decoder ResponseDecoder) *Sling {
 	}
 	s.responseDecoder = decoder
 	return s
+}
+
+// WithXMLResponse sets xml decoder for response.
+func (s *Sling) WithXMLResponse() *Sling {
+	return s.ResponseDecoder(xmlResponseDecoder{})
+}
+
+// WithJSONResponse sets json decoder for response.
+func (s *Sling) WithJSONResponse() *Sling {
+	return s.ResponseDecoder(jsonResponseDecoder{})
 }
 
 // ReceiveSuccess creates a new HTTP request and returns the response. Success
