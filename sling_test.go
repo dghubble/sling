@@ -14,6 +14,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 type FakeParams struct {
@@ -722,6 +723,34 @@ func TestDo_onFailureWithNilValue(t *testing.T) {
 	expected := &FakeModel{}
 	if !reflect.DeepEqual(expected, model) {
 		t.Errorf("successV should not be populated, exepcted %v, got %v", expected, model)
+	}
+}
+
+func TestDo_retry(t *testing.T) {
+	client, mux, server := testServer()
+	defer server.Close()
+	n := 0
+	codes := []int{500, 502, 504, 200}
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(codes[n%len(codes)])
+		n++
+	})
+
+	sling := New().Client(client)
+	req, _ := http.NewRequest("GET", "http://example.com/", nil)
+
+	resp, _ := sling.Retry(len(codes), time.Microsecond, codes[:3]...).Do(req, nil, nil)
+
+	if len(sling.Responses) != len(codes) {
+		t.Errorf("expected %d, got %d", len(codes), len(sling.Responses))
+	}
+	for i, code := range codes {
+		if sling.Responses[i].StatusCode != code {
+			t.Errorf("expected %d, got %d", code, sling.Responses[i].StatusCode)
+		}
+	}
+	if resp.StatusCode != 200 {
+		t.Errorf("expected %d, got %d", 200, resp.StatusCode)
 	}
 }
 

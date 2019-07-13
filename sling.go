@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	goquery "github.com/google/go-querystring/query"
 )
@@ -38,6 +39,14 @@ type Sling struct {
 	bodyProvider BodyProvider
 	// response decoder
 	responseDecoder ResponseDecoder
+	// max retries
+	retryMax int
+	// retry pause
+	retryPause time.Duration
+	// status codes for retry
+	retryStatusCodes []int
+	// responses
+	Responses []*http.Response
 }
 
 // New returns a new Sling with an http DefaultClient.
@@ -108,6 +117,16 @@ func (s *Sling) Doer(doer Doer) *Sling {
 func (s *Sling) Head(pathURL string) *Sling {
 	s.method = "HEAD"
 	return s.Path(pathURL)
+}
+
+// isRetryStatus checks if retry is requested for a given status.
+func (s *Sling) isRetryStatus(status int) bool {
+	for _, retryStatusCode := range s.retryStatusCodes {
+		if status == retryStatusCode {
+			return true
+		}
+	}
+	return false
 }
 
 // Get sets the Sling method to GET and sets the given pathURL.
@@ -302,6 +321,15 @@ func (s *Sling) Request() (*http.Request, error) {
 	return req, err
 }
 
+// Retry sets the max numer of retries, time between attempts and StatusCode(s)
+// it will retry on.
+func (s *Sling) Retry(count int, pause time.Duration, statusCodes ...int) *Sling {
+	s.retryMax = count
+	s.retryPause = pause
+	s.retryStatusCodes = statusCodes
+	return s
+}
+
 // addQueryStructs parses url tagged query structs using go-querystring to
 // encode them to url.Values and format them onto the url.RawQuery. Any
 // query parsing or encoding errors are returned.
@@ -370,11 +398,8 @@ func (s *Sling) Receive(successV, failureV interface{}) (*http.Response, error) 
 	return s.Do(req, successV, failureV)
 }
 
-// Do sends an HTTP request and returns the response. Success responses (2XX)
-// are JSON decoded into the value pointed to by successV and other responses
-// are JSON decoded into the value pointed to by failureV.
-// Any error sending the request or decoding the response is returned.
-func (s *Sling) Do(req *http.Request, successV, failureV interface{}) (*http.Response, error) {
+// do does the real request. It is wrapped by Do.
+func (s *Sling) do(req *http.Request, successV, failureV interface{}) (*http.Response, error) {
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
 		return resp, err
@@ -390,6 +415,27 @@ func (s *Sling) Do(req *http.Request, successV, failureV interface{}) (*http.Res
 	// Decode from json
 	if successV != nil || failureV != nil {
 		err = decodeResponse(resp, s.responseDecoder, successV, failureV)
+	}
+	return resp, err
+}
+
+// Do sends an HTTP request and returns the response. Success responses (2XX)
+// are JSON decoded into the value pointed to by successV and other responses
+// are JSON decoded into the value pointed to by failureV.
+// Any error sending the request or decoding the response is returned.
+func (s *Sling) Do(req *http.Request, successV, failureV interface{}) (*http.Response, error) {
+	s.Responses = []*http.Response{}
+	var resp *http.Response
+	var err error
+	for retry := 0; retry <= s.retryMax; retry++ {
+		if retry > 0 {
+			time.Sleep(s.retryPause)
+		}
+		resp, err = s.do(req, successV, failureV)
+		s.Responses = append(s.Responses, resp)
+		if !s.isRetryStatus(resp.StatusCode) {
+			break
+		}
 	}
 	return resp, err
 }
