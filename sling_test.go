@@ -683,7 +683,7 @@ func TestDo_noContent(t *testing.T) {
 		t.Errorf("expected nil, got %v", err)
 	}
 	if resp.StatusCode != 204 {
-		t.Errorf("expected %d, got %d", 200, resp.StatusCode)
+		t.Errorf("expected %d, got %d", 204, resp.StatusCode)
 	}
 	expectedModel := &FakeModel{}
 	if !reflect.DeepEqual(expectedModel, model) {
