@@ -665,6 +665,36 @@ func TestDo_onSuccessWithNilValue(t *testing.T) {
 	}
 }
 
+func TestDo_noContent(t *testing.T) {
+	client, mux, server := testServer()
+	defer server.Close()
+	mux.HandleFunc("/nocontent", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(204)
+	})
+
+	sling := New().Client(client)
+	req, _ := http.NewRequest("DELETE", "http://example.com/nocontent", nil)
+
+	model := new(FakeModel)
+	apiError := new(APIError)
+	resp, err := sling.Do(req, model, apiError)
+
+	if err != nil {
+		t.Errorf("expected nil, got %v", err)
+	}
+	if resp.StatusCode != 204 {
+		t.Errorf("expected %d, got %d", 200, resp.StatusCode)
+	}
+	expectedModel := &FakeModel{}
+	if !reflect.DeepEqual(expectedModel, model) {
+		t.Errorf("successV should not be populated, exepcted %v, got %v", expectedModel, model)
+	}
+	expectedAPIError := &APIError{}
+	if !reflect.DeepEqual(expectedAPIError, apiError) {
+		t.Errorf("failureV should not be populated, exepcted %v, got %v", expectedAPIError, apiError)
+	}
+}
+
 func TestDo_onFailure(t *testing.T) {
 	const expectedMessage = "Invalid argument"
 	const expectedCode int = 215
@@ -827,6 +857,25 @@ func TestReceive_failure(t *testing.T) {
 	expectedModel := &FakeModel{}
 	if !reflect.DeepEqual(expectedModel, model) {
 		t.Errorf("successV should not be zero valued, expected %v, got %v", expectedModel, model)
+	}
+}
+
+func TestReceive_noContent(t *testing.T) {
+	client, mux, server := testServer()
+	defer server.Close()
+	mux.HandleFunc("/foo/submit", func(w http.ResponseWriter, r *http.Request) {
+		assertMethod(t, "HEAD", r)
+		w.WriteHeader(204)
+	})
+
+	endpoint := New().Client(client).Base("http://example.com/").Path("foo/").Head("submit")
+	resp, err := endpoint.New().Receive(nil, nil)
+
+	if err != nil {
+		t.Errorf("expected nil, got %v", err)
+	}
+	if resp.StatusCode != 204 {
+		t.Errorf("expected %d, got %d", 204, resp.StatusCode)
 	}
 }
 
