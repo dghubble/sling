@@ -2,6 +2,8 @@ package sling
 
 import (
 	"encoding/json"
+	"errors"
+	"io/ioutil"
 	"net/http"
 )
 
@@ -19,4 +21,20 @@ type jsonDecoder struct {
 // Caller must provide a non-nil v and close the resp.Body.
 func (d jsonDecoder) Decode(resp *http.Response, v interface{}) error {
 	return json.NewDecoder(resp.Body).Decode(v)
+}
+
+// byteDecoder decodes http response into a byte slice.
+type byteDecoder struct {
+}
+
+// Decode decodes the Response Body into a byte slice.
+// Caller must provide a non-nil v and close the resp.Body.
+func (d byteDecoder) Decode(resp *http.Response, v interface{}) error {
+	vBytes, ok := v.(*[]byte)
+	if !ok {
+		return errors.New("bad v type, must be *[]byte")
+	}
+	bytes, err := ioutil.ReadAll(resp.Body)
+	*vBytes = bytes
+	return err
 }

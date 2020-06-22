@@ -358,6 +358,13 @@ func (s *Sling) ResponseDecoder(decoder ResponseDecoder) *Sling {
 	return s
 }
 
+// ByteResponse sets Sling's response decoder to byteDecoder.
+// You must pass a *[]byte to the Receive method.
+func (s *Sling) ByteResponse() *Sling {
+	s.responseDecoder = byteDecoder{}
+	return s
+}
+
 // ReceiveSuccess creates a new HTTP request and returns the response. Success
 // responses (2XX) are JSON decoded into the value pointed to by successV.
 // Any error creating the request, sending it, or decoding a 2XX response

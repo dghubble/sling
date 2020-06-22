@@ -795,6 +795,34 @@ func TestReceive_success_nonDefaultDecoder(t *testing.T) {
 	}
 }
 
+func TestReceive_success_byteDecoder(t *testing.T) {
+	client, mux, server := testServer()
+	defer server.Close()
+	mux.HandleFunc("/foo/read", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte{0x1, 0x2, 0x3})
+	})
+
+	endpoint := New().Client(client).Base("http://example.com/").Path("foo/").Get("read")
+	model := make([]byte, 0)
+	apiError := make([]byte, 0)
+	resp, err := endpoint.New().ByteResponse().Receive(&model, &apiError)
+
+	if err != nil {
+		t.Errorf("expected nil, got %v", err)
+	}
+	if resp.StatusCode != 200 {
+		t.Errorf("expected %d, got %d", 200, resp.StatusCode)
+	}
+	expectedModel := []byte{0x1, 0x2, 0x3}
+	if !reflect.DeepEqual(expectedModel, model) {
+		t.Errorf("expected %v, got %v", expectedModel, model)
+	}
+	expectedAPIError := []byte{}
+	if !reflect.DeepEqual(expectedAPIError, apiError) {
+		t.Errorf("failureV should be zero valued, exepcted %v, got %v", expectedAPIError, apiError)
+	}
+}
+
 func TestReceive_success(t *testing.T) {
 	client, mux, server := testServer()
 	defer server.Close()
