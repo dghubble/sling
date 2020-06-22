@@ -175,6 +175,15 @@ func (s *Sling) Set(key, value string) *Sling {
 	return s
 }
 
+// SetMany sets multiple headers at once, replacing existing values
+// associated with each key. Header keys are canonicalized.
+func (s *Sling) SetMany(headers map[string]string) *Sling {
+	for key, value := range headers {
+		s.header.Set(key, value)
+	}
+	return s
+}
+
 // SetBasicAuth sets the Authorization header to use HTTP Basic Authentication
 // with the provided username and password. With HTTP Basic Authentication
 // the provided username and password are not encrypted.

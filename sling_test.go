@@ -252,6 +252,7 @@ func TestSetHeader(t *testing.T) {
 		// Set should replace values received by copying parent Slings
 		{New().Set("A", "B").Add("a", "c").New(), map[string][]string{"A": []string{"B", "c"}}},
 		{New().Add("A", "B").New().Set("a", "c"), map[string][]string{"A": []string{"c"}}},
+		{New().SetMany(map[string]string{"a": "b", "c": "d"}), map[string][]string{"A": {"b"}, "C": {"d"}}},
 	}
 	for _, c := range cases {
 		// type conversion from Header to alias'd map for deep equality comparison
