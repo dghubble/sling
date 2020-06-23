@@ -241,6 +241,28 @@ func TestAddHeader(t *testing.T) {
 	}
 }
 
+func TestAddCookie(t *testing.T) {
+	cases := []struct {
+		sling           *Sling
+		expectedCookies []*http.Cookie
+	}{
+		{New().AddCookie(&http.Cookie{Name: "test", Domain: "http://example.com/"}),
+			[]*http.Cookie{{Name: "test", Domain: "http://example.com/"}},
+		},
+		// existing cookies should be appended
+		{New().AddCookie(&http.Cookie{Name: "test", Domain: "http://example.com/"}).
+			AddCookie(&http.Cookie{Name: "test2", Domain: "http://example2.com/"}),
+			[]*http.Cookie{{Name: "test", Domain: "http://example.com/"},
+				{Name: "test2", Domain: "http://example2.com/"}},
+		},
+	}
+	for _, c := range cases {
+		if !reflect.DeepEqual(c.expectedCookies, c.sling.cookies) {
+			t.Errorf("not DeepEqual: expected %v, got %v", c.expectedCookies, c.sling.cookies)
+		}
+	}
+}
+
 func TestSetHeader(t *testing.T) {
 	cases := []struct {
 		sling          *Sling

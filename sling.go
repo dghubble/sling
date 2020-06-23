@@ -33,6 +33,8 @@ type Sling struct {
 	rawURL string
 	// stores key-values pairs to add to request's Headers
 	header http.Header
+	// stores cookies to add to request's Cookies
+	cookies []*http.Cookie
 	// url tagged query structs
 	queryStructs []interface{}
 	// body provider
@@ -73,11 +75,17 @@ func (s *Sling) New() *Sling {
 	for k, v := range s.header {
 		headerCopy[k] = v
 	}
+	// copy cookies into a new cookie slice
+	cookiesCopy := make([]*http.Cookie, 0, len(s.cookies))
+	for _, cookie := range s.cookies {
+		cookiesCopy = append(cookiesCopy, cookie)
+	}
 	return &Sling{
 		httpClient:      s.httpClient,
 		method:          s.method,
 		rawURL:          s.rawURL,
 		header:          headerCopy,
+		cookies:         cookiesCopy,
 		queryStructs:    append([]interface{}{}, s.queryStructs...),
 		bodyProvider:    s.bodyProvider,
 		responseDecoder: s.responseDecoder,
@@ -202,6 +210,20 @@ func basicAuth(username, password string) string {
 	return base64.StdEncoding.EncodeToString([]byte(auth))
 }
 
+// Cookie
+
+// AddCookie adds a cookie to the Request.
+func (s *Sling) AddCookie(cookie *http.Cookie) *Sling {
+	s.cookies = append(s.cookies, cookie)
+	return s
+}
+
+// AddCookies adds a slice of cookies to the Request.
+func (s *Sling) AddCookies(cookies []*http.Cookie) *Sling {
+	s.cookies = append(s.cookies, cookies...)
+	return s
+}
+
 // Url
 
 // Base sets the rawURL. If you intend to extend the url with Path,
@@ -313,6 +335,7 @@ func (s *Sling) Request() (*http.Request, error) {
 		return nil, err
 	}
 	addHeaders(req, s.header)
+	addCookies(req, s.cookies)
 	return req, err
 }
 
@@ -353,6 +376,14 @@ func addHeaders(req *http.Request, header http.Header) {
 		for _, value := range values {
 			req.Header.Add(key, value)
 		}
+	}
+}
+
+// addCookies adds the cookies from the given cookie slice to the
+// request.
+func addCookies(req *http.Request, cookies []*http.Cookie) {
+	for _, cookie := range cookies {
+		req.AddCookie(cookie)
 	}
 }
 
