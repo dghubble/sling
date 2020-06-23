@@ -922,6 +922,28 @@ func TestReceive_errorCreatingRequest(t *testing.T) {
 	}
 }
 
+func TestReceiveBody(t *testing.T) {
+	client, mux, server := testServer()
+	defer server.Close()
+	mux.HandleFunc("/foo/read", func(w http.ResponseWriter, r *http.Request) {
+		assertMethod(t, "GET", r)
+		fmt.Fprintf(w, `{"text": "Some text", "favorite_count": 24}`)
+	})
+
+	endpoint := New().Client(client).Base("http://example.com/").Path("foo/").Get("read")
+	resp, err := endpoint.New().ReceiveBody()
+
+	if err != nil {
+		t.Errorf("expected nil, got %v", err)
+	}
+	if resp.StatusCode != 200 {
+		t.Errorf("expected %d, got %d", 200, resp.StatusCode)
+	}
+	if err := resp.Body.Close(); err != nil {
+		t.Errorf("could not close body, it was probably already closed: %v", err)
+	}
+}
+
 func TestReuseTcpConnections(t *testing.T) {
 	var connCount int32
 

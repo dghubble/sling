@@ -39,6 +39,8 @@ type Sling struct {
 	bodyProvider BodyProvider
 	// response decoder
 	responseDecoder ResponseDecoder
+	// whether to keep the body open for the user to consume
+	closeBody bool
 }
 
 // New returns a new Sling with an http DefaultClient.
@@ -49,6 +51,7 @@ func New() *Sling {
 		header:          make(http.Header),
 		queryStructs:    make([]interface{}, 0),
 		responseDecoder: jsonDecoder{},
+		closeBody:       true,
 	}
 }
 
@@ -78,6 +81,7 @@ func (s *Sling) New() *Sling {
 		queryStructs:    append([]interface{}{}, s.queryStructs...),
 		bodyProvider:    s.bodyProvider,
 		responseDecoder: s.responseDecoder,
+		closeBody:       s.closeBody,
 	}
 }
 
@@ -365,6 +369,18 @@ func (s *Sling) ByteResponse() *Sling {
 	return s
 }
 
+// ReceiveBody creates a new HTTP request and returns the response.
+// Any error creating the request or sending it is returned.
+//
+// The response body will be left for you to parse.
+// Make sure to close it to prevent resource leaks.
+func (s *Sling) ReceiveBody() (*http.Response, error) {
+	s.closeBody = false
+	response, err := s.Receive(nil, nil)
+	s.closeBody = true
+	return response, err
+}
+
 // ReceiveSuccess creates a new HTTP request and returns the response. Success
 // responses (2XX) are JSON decoded into the value pointed to by successV.
 // Any error creating the request, sending it, or decoding a 2XX response
@@ -398,6 +414,12 @@ func (s *Sling) Do(req *http.Request, successV, failureV interface{}) (*http.Res
 	if err != nil {
 		return resp, err
 	}
+
+	// leave to the user to read and close
+	if !s.closeBody {
+		return resp, nil
+	}
+
 	// when err is nil, resp contains a non-nil resp.Body which must be closed
 	defer resp.Body.Close()
 
