@@ -589,6 +589,8 @@ func TestAddQueryStructs(t *testing.T) {
 		expected     string
 	}{
 		{"http://a.io", []interface{}{}, "http://a.io"},
+		{"http://a.io/?test", []interface{}{}, "http://a.io/?test"},
+		{"http://a.io/?test=", []interface{}{}, "http://a.io/?test="},
 		{"http://a.io", []interface{}{paramsA}, "http://a.io?limit=30"},
 		{"http://a.io", []interface{}{paramsA, paramsA}, "http://a.io?limit=30&limit=30"},
 		{"http://a.io", []interface{}{paramsA, paramsB}, "http://a.io?count=25&kind_name=recent&limit=30"},

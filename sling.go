@@ -320,6 +320,11 @@ func (s *Sling) Request() (*http.Request, error) {
 // encode them to url.Values and format them onto the url.RawQuery. Any
 // query parsing or encoding errors are returned.
 func addQueryStructs(reqURL *url.URL, queryStructs []interface{}) error {
+	// don't change query if not necessary
+	if len(queryStructs) < 1 {
+		return nil
+	}
+
 	urlValues, err := url.ParseQuery(reqURL.RawQuery)
 	if err != nil {
 		return err
