@@ -360,9 +360,9 @@ func (s *Sling) ReceiveSuccess(successV interface{}) (*http.Response, error) {
 // Receive creates a new HTTP request and returns the response. Success
 // responses (2XX) are JSON decoded into the value pointed to by successV and
 // other responses are JSON decoded into the value pointed to by failureV.
-// If the status code of response is 204(no content), decoding is skipped.
-// Any error creating the request, sending it, or decoding the response is
-// returned.
+// If the status code of response is 204(no content) or the Content-Lenght is 0,
+// decoding is skipped. Any error creating the request, sending it, or decoding
+// the response is returned.
 // Receive is shorthand for calling Request and Do.
 func (s *Sling) Receive(successV, failureV interface{}) (*http.Response, error) {
 	req, err := s.Request()
@@ -375,8 +375,9 @@ func (s *Sling) Receive(successV, failureV interface{}) (*http.Response, error) 
 // Do sends an HTTP request and returns the response. Success responses (2XX)
 // are JSON decoded into the value pointed to by successV and other responses
 // are JSON decoded into the value pointed to by failureV.
-// If the status code of response is 204(no content), decoding is skipped.
-// Any error sending the request or decoding the response is returned.
+// If the status code of response is 204(no content) or the Content-Length is 0,
+// decoding is skipped. Any error sending the request or decoding the response
+// is returned.
 func (s *Sling) Do(req *http.Request, successV, failureV interface{}) (*http.Response, error) {
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
@@ -391,8 +392,8 @@ func (s *Sling) Do(req *http.Request, successV, failureV interface{}) (*http.Res
 	// See: https://golang.org/pkg/net/http/#Response
 	defer io.Copy(ioutil.Discard, resp.Body)
 
-	// Don't try to decode on 204s
-	if resp.StatusCode == http.StatusNoContent {
+	// Don't try to decode on 204s or Content-Length is 0
+	if resp.StatusCode == http.StatusNoContent || resp.ContentLength == 0 {
 		return resp, nil
 	}
 

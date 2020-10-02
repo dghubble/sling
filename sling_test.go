@@ -828,6 +828,38 @@ func TestReceive_success(t *testing.T) {
 	}
 }
 
+func TestReceive_StatusOKNoContent(t *testing.T) {
+	client, mux, server := testServer()
+	defer server.Close()
+	mux.HandleFunc("/foo/submit", func(w http.ResponseWriter, r *http.Request) {
+		assertMethod(t, "POST", r)
+		w.WriteHeader(201)
+		w.Header().Set("Location", "/foo/latest")
+	})
+
+	endpoint := New().Client(client).Base("http://example.com/").Path("foo/").Post("submit")
+	// fake a post response for testing purposes, checking that it's valid happens in other tests
+	params := FakeParams{}
+	model := new(FakeModel)
+	apiError := new(APIError)
+	resp, err := endpoint.New().BodyForm(params).Receive(model, apiError)
+
+	if err != nil {
+		t.Errorf("expected nil, got %v", err)
+	}
+	if resp.StatusCode != 201 {
+		t.Errorf("expected %d, got %d", 201, resp.StatusCode)
+	}
+	expectedModel := &FakeModel{}
+	if !reflect.DeepEqual(expectedModel, model) {
+		t.Errorf("expected %v, got %v", expectedModel, model)
+	}
+	expectedAPIError := &APIError{}
+	if !reflect.DeepEqual(expectedAPIError, apiError) {
+		t.Errorf("failureV should be zero valued, exepcted %v, got %v", expectedAPIError, apiError)
+	}
+}
+
 func TestReceive_failure(t *testing.T) {
 	client, mux, server := testServer()
 	defer server.Close()
