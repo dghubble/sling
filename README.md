@@ -1,4 +1,5 @@
-# Sling [![Build Status](https://travis-ci.org/dghubble/sling.svg?branch=master)](https://travis-ci.org/dghubble/sling) [![GoDoc](https://godoc.org/github.com/dghubble/sling?status.svg)](https://godoc.org/github.com/dghubble/sling)
+# Sling [![Build Status](https://github.com/dghubble/sling/workflows/test/badge.svg)](https://github.com/dghubble/oauth1/actions?query=workflow%3Atest+branch%3Amaster) [![Coverage](https://gocover.io/_badge/github.com/dghubble/sling)](https://gocover.io/github.com/dghubble/sling) [![GoDoc](https://godoc.org/github.com/dghubble/sling?status.svg)](https://godoc.org/github.com/dghubble/sling)
+
 <img align="right" src="https://storage.googleapis.com/dghubble/small-gopher-with-sling.png">
 
 Sling is a Go HTTP client library for creating and sending API requests.
