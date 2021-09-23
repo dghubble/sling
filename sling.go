@@ -85,7 +85,7 @@ func (s *Sling) New() *Sling {
 
 // Client sets the http Client used to do requests. If a nil client is given,
 // the http.DefaultClient will be used.
-func (s *Sling) Client(httpClient *http.Client) *Sling {
+func (s *Sling) Client(httpClient Doer) *Sling {
 	if httpClient == nil {
 		return s.Doer(http.DefaultClient)
 	}
