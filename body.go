@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"net/url"
 	"strings"
 
 	goquery "github.com/google/go-querystring/query"
@@ -60,9 +61,13 @@ func (p formBodyProvider) ContentType() string {
 }
 
 func (p formBodyProvider) Body() (io.Reader, error) {
-	values, err := goquery.Values(p.payload)
-	if err != nil {
-		return nil, err
+	values, ok := p.payload.(url.Values)
+	if !ok {
+		var err error
+		values, err = goquery.Values(p.payload)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return strings.NewReader(values.Encode()), nil
 }

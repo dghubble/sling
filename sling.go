@@ -1,7 +1,10 @@
 package sling
 
 import (
+	"bytes"
+	"context"
 	"encoding/base64"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -175,6 +178,32 @@ func (s *Sling) Set(key, value string) *Sling {
 	return s
 }
 
+// AddHeaders adds all the http.Header values, appending values for existing keys
+// to the key's values. Header keys are canonicalized.
+func (s *Sling) AddHeaders(headers http.Header) *Sling {
+	for key, values := range headers {
+		for i := range values {
+			s.header.Add(key, values[i])
+		}
+	}
+	return s
+}
+
+// SetHeaders sets all the http.Header values, replacing values for existing keys
+// to the key's values. Header keys are canonicalized.
+func (s *Sling) SetHeaders(headers http.Header) *Sling {
+	for key, values := range headers {
+		for i := range values {
+			if i == 0 {
+				s.header.Set(key, values[i])
+			} else {
+				s.header.Add(key, values[i])
+			}
+		}
+	}
+	return s
+}
+
 // SetBasicAuth sets the Authorization header to use HTTP Basic Authentication
 // with the provided username and password. With HTTP Basic Authentication
 // the provided username and password are not encrypted.
@@ -210,6 +239,13 @@ func (s *Sling) Path(path string) *Sling {
 	return s
 }
 
+// Method sets the http method directly. Convenience methods are also provided
+// for all standard http methods
+func (s *Sling) Method(method string) *Sling {
+	s.method = method
+	return s
+}
+
 // QueryStruct appends the queryStruct to the Sling's queryStructs. The value
 // pointed to by each queryStruct will be encoded as url query parameters on
 // new requests (see Request()).
@@ -218,6 +254,15 @@ func (s *Sling) Path(path string) *Sling {
 func (s *Sling) QueryStruct(queryStruct interface{}) *Sling {
 	if queryStruct != nil {
 		s.queryStructs = append(s.queryStructs, queryStruct)
+	}
+	return s
+}
+
+// QueryValues appends url.Values to the query string. The value will be encoded as
+// url query parameters on new requests (see Request()).
+func (s *Sling) QueryValues(values url.Values) *Sling {
+	if values != nil {
+		s.queryStructs = append(s.queryStructs, values)
 	}
 	return s
 }
@@ -263,8 +308,8 @@ func (s *Sling) BodyJSON(bodyJSON interface{}) *Sling {
 
 // BodyForm sets the Sling's bodyForm. The value pointed to by the bodyForm
 // will be url encoded as the Body on new requests (see Request()).
-// The bodyForm argument should be a pointer to a url tagged struct. See
-// https://godoc.org/github.com/google/go-querystring/query for details.
+// The bodyForm argument should be a pointer to a url tagged struct or a url.Values.
+// See https://godoc.org/github.com/google/go-querystring/query for details.
 func (s *Sling) BodyForm(bodyForm interface{}) *Sling {
 	if bodyForm == nil {
 		return s
@@ -278,6 +323,13 @@ func (s *Sling) BodyForm(bodyForm interface{}) *Sling {
 // Returns any errors parsing the rawURL, encoding query structs, encoding
 // the body, or creating the http.Request.
 func (s *Sling) Request() (*http.Request, error) {
+	return s.RequestWithContext(context.Background())
+}
+
+// Request returns a new http.Request created with the Sling properties.
+// Returns any errors parsing the rawURL, encoding query structs, encoding
+// the body, or creating the http.Request.
+func (s *Sling) RequestWithContext(ctx context.Context) (*http.Request, error) {
 	reqURL, err := url.Parse(s.rawURL)
 	if err != nil {
 		return nil, err
@@ -295,7 +347,7 @@ func (s *Sling) Request() (*http.Request, error) {
 			return nil, err
 		}
 	}
-	req, err := http.NewRequest(s.method, reqURL.String(), body)
+	req, err := http.NewRequestWithContext(ctx, s.method, reqURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -313,9 +365,13 @@ func addQueryStructs(reqURL *url.URL, queryStructs []interface{}) error {
 	}
 	// encodes query structs into a url.Values map and merges maps
 	for _, queryStruct := range queryStructs {
-		queryValues, err := goquery.Values(queryStruct)
-		if err != nil {
-			return err
+		queryValues, ok := queryStruct.(url.Values) // use url.Values directly if we have it
+		if !ok {
+			var err error
+			queryValues, err = goquery.Values(queryStruct)
+			if err != nil {
+				return err
+			}
 		}
 		for key, values := range queryValues {
 			for _, value := range values {
@@ -365,7 +421,18 @@ func (s *Sling) ReceiveSuccess(successV interface{}) (*http.Response, error) {
 // the response is returned.
 // Receive is shorthand for calling Request and Do.
 func (s *Sling) Receive(successV, failureV interface{}) (*http.Response, error) {
-	req, err := s.Request()
+	return s.ReceiveWithContext(context.Background(), successV, failureV)
+}
+
+// ReceiveWithContext creates a new HTTP request and returns the response. Success
+// responses (2XX) are JSON decoded into the value pointed to by successV and
+// other responses are JSON decoded into the value pointed to by failureV.
+// If the status code of response is 204(no content) or the Content-Lenght is 0,
+// decoding is skipped. Any error creating the request, sending it, or decoding
+// the response is returned.
+// Receive is shorthand for calling Request and Do.
+func (s *Sling) ReceiveWithContext(ctx context.Context, successV, failureV interface{}) (*http.Response, error) {
+	req, err := s.RequestWithContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -418,6 +485,9 @@ func decodeResponse(resp *http.Response, decoder ResponseDecoder, successV, fail
 		if failureV != nil {
 			return decoder.Decode(resp, failureV)
 		}
+		var buf bytes.Buffer
+		buf.ReadFrom(resp.Body)
+		return fmt.Errorf("error %d - %s: body: %s", resp.StatusCode, resp.Status, buf.String())
 	}
 	return nil
 }
