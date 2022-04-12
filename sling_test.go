@@ -769,7 +769,7 @@ func TestReceive_success_nonDefaultDecoder(t *testing.T) {
 			<temperature>10.5</temperature>
 		</response>`
 		fmt.Fprintf(w, xml.Header)
-		fmt.Fprintf(w, data)
+		fmt.Fprint(w, data)
 	})
 
 	endpoint := New().Client(client).Base("http://example.com/").Path("foo/").Post("submit")
