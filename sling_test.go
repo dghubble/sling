@@ -580,6 +580,20 @@ func TestRequest_headers(t *testing.T) {
 	}
 }
 
+func TestRequest_context(t *testing.T) {
+	ctx, fn := context.WithCancel(context.Background())
+	defer fn() // cancel context eventually to release resources
+
+	req, err := New().RequestWithContext(ctx)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	if req.Context() != ctx {
+		t.Errorf("request.Context() is not same as context passed during request creation")
+	}
+}
+
 func TestAddQueryStructs(t *testing.T) {
 	cases := []struct {
 		rawurl       string
@@ -922,6 +936,26 @@ func TestReceive_errorCreatingRequest(t *testing.T) {
 	if resp != nil {
 		t.Errorf("expected nil resp, got %v", resp)
 	}
+}
+
+func TestReceive_context(t *testing.T) {
+       client, mux, server := testServer()
+       defer server.Close()
+       mux.HandleFunc("/foo", func(w http.ResponseWriter, r *http.Request) {
+       })
+
+       ctx, fn := context.WithCancel(context.Background())
+       defer fn()
+
+       endpoint := New().Client(client).Get("http://example.com/foo")
+       resp, err := endpoint.New().ReceiveWithContext(ctx, nil, nil)
+       if err != nil {
+               t.Errorf("expected nil, got %v", err)
+       }
+
+       if resp.Request.Context() != ctx {
+               t.Error("request.Context() is not same as context passed during receive operation")
+       }
 }
 
 func TestReuseTcpConnections(t *testing.T) {

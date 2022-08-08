@@ -1,6 +1,7 @@
 package sling
 
 import (
+	"context"
 	"encoding/base64"
 	"io"
 	"net/http"
@@ -277,6 +278,15 @@ func (s *Sling) BodyForm(bodyForm interface{}) *Sling {
 // Returns any errors parsing the rawURL, encoding query structs, encoding
 // the body, or creating the http.Request.
 func (s *Sling) Request() (*http.Request, error) {
+	return s.request(context.Background())
+}
+
+// RequestWithContext is similar to Request but allows you to pass a context.
+func (s *Sling) RequestWithContext(ctx context.Context) (*http.Request, error) {
+	return s.request(ctx)
+}
+
+func (s *Sling) request(ctx context.Context) (*http.Request, error) {
 	reqURL, err := url.Parse(s.rawURL)
 	if err != nil {
 		return nil, err
@@ -294,7 +304,7 @@ func (s *Sling) Request() (*http.Request, error) {
 			return nil, err
 		}
 	}
-	req, err := http.NewRequest(s.method, reqURL.String(), body)
+	req, err := http.NewRequestWithContext(ctx, s.method, reqURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -364,7 +374,16 @@ func (s *Sling) ReceiveSuccess(successV interface{}) (*http.Response, error) {
 // the response is returned.
 // Receive is shorthand for calling Request and Do.
 func (s *Sling) Receive(successV, failureV interface{}) (*http.Response, error) {
-	req, err := s.Request()
+	return s.receive(context.Background(), successV, failureV)
+}
+
+// ReceiveWithContext is similar to Receive but allows you to pass a context.
+func (s *Sling) ReceiveWithContext(ctx context.Context, successV, failureV interface{}) (*http.Response, error) {
+	return s.receive(ctx, successV, failureV)
+}
+
+func (s *Sling) receive(ctx context.Context, successV, failureV interface{}) (*http.Response, error) {
+	req, err := s.RequestWithContext(ctx)
 	if err != nil {
 		return nil, err
 	}

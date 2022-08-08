@@ -18,6 +18,7 @@ Slings store HTTP Request properties to simplify sending requests and decoding r
 * Encode structs into URL query parameters
 * Encode a form or JSON into the Request Body
 * Receive JSON success or failure responses
+* Control a request's lifetime via context
 
 ## Install
 
@@ -270,6 +271,29 @@ func (s *IssueService) ListByRepo(owner, repo string, params *IssueListParams) (
     return *issues, resp, err
 }
 ```
+
+### Controlling lifetime via context
+All the above functionality of a sling can be made context aware.
+
+Getting a context aware request:
+```go
+ctx, cancel := context.WithTimeout(context.Background(),10*time.Second)
+req, err := sling.New().Get("https://example.com").RequestWithContext(ctx)
+```
+Receiving in a context aware manner
+```go
+success := &struct{}{}
+failure := &struct{}{}
+ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+resp, err := sling.New().Path("https://example.com").Get("/foo").ReceiveWithContext(ctx,success,failure)
+```
+After making the request you can first check whether request completed in time before proceeding with the response:
+```go
+if errors.Is(err, context.DeadlineExceeded) {
+    // Take action accordingly
+}
+```
+For more details about effectively using context please see: https://go.dev/blog/context
 
 ## Example APIs using Sling
 
