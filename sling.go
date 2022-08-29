@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"sync"
 
 	goquery "github.com/google/go-querystring/query"
 )
@@ -39,6 +40,8 @@ type Sling struct {
 	bodyProvider BodyProvider
 	// response decoder
 	responseDecoder ResponseDecoder
+	// header map lock
+	mu sync.Mutex
 }
 
 // New returns a new Sling with an http DefaultClient.
@@ -164,6 +167,8 @@ func (s *Sling) Connect(pathURL string) *Sling {
 // Add adds the key, value pair in Headers, appending values for existing keys
 // to the key's values. Header keys are canonicalized.
 func (s *Sling) Add(key, value string) *Sling {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.header.Add(key, value)
 	return s
 }
@@ -171,6 +176,8 @@ func (s *Sling) Add(key, value string) *Sling {
 // Set sets the key, value pair in Headers, replacing existing values
 // associated with key. Header keys are canonicalized.
 func (s *Sling) Set(key, value string) *Sling {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.header.Set(key, value)
 	return s
 }
@@ -299,6 +306,8 @@ func (s *Sling) Request() (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	addHeaders(req, s.header)
 	return req, err
 }
