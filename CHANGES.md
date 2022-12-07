@@ -4,6 +4,10 @@ Notable changes between releases.
 
 ## Latest
 
+## v1.4.1
+
+* Update minimum Go version to v1.18 ([#76](https://github.com/dghubble/sling/pull/76))
+
 ## v1.4.0
 
 * `Do` reads Body to reuse HTTP/1.x "keep-alive" TCP connections ([#59](https://github.com/dghubble/sling/pull/59))
