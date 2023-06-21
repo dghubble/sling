@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"net"
 	"net/http"
@@ -385,7 +384,7 @@ func TestBodyFormSetter(t *testing.T) {
 }
 
 func TestBodySetter(t *testing.T) {
-	fakeInput := ioutil.NopCloser(strings.NewReader("test"))
+	fakeInput := io.NopCloser(strings.NewReader("test"))
 	fakeBodyProvider := bodyProvider{body: fakeInput}
 
 	cases := []struct {
