@@ -3,7 +3,6 @@ package sling
 import (
 	"encoding/base64"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 
@@ -390,7 +389,7 @@ func (s *Sling) Do(req *http.Request, successV, failureV interface{}) (*http.Res
 	// reuse HTTP/1.x "keep-alive" TCP connections if the Body is
 	// not read to completion and closed.
 	// See: https://golang.org/pkg/net/http/#Response
-	defer io.Copy(ioutil.Discard, resp.Body)
+	defer io.Copy(io.Discard, resp.Body)
 
 	// Don't try to decode on 204s or Content-Length is 0
 	if resp.StatusCode == http.StatusNoContent || resp.ContentLength == 0 {
