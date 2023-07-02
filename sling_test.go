@@ -3,7 +3,6 @@ package sling
 import (
 	"bytes"
 	"context"
-	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
@@ -40,13 +39,6 @@ type FakeModel struct {
 
 var modelA = FakeModel{Text: "note", FavoriteCount: 12}
 
-// Non-Json response decoder
-type xmlResponseDecoder struct{}
-
-func (d xmlResponseDecoder) Decode(resp *http.Response, v interface{}) error {
-	return xml.NewDecoder(resp.Body).Decode(v)
-}
-
 func TestNew(t *testing.T) {
 	sling := New()
 	if sling.httpClient != http.DefaultClient {
@@ -64,14 +56,14 @@ func TestSlingNew(t *testing.T) {
 	fakeBodyProvider := jsonBodyProvider{FakeModel{}}
 
 	cases := []*Sling{
-		&Sling{httpClient: &http.Client{}, method: "GET", rawURL: "http://example.com"},
-		&Sling{httpClient: nil, method: "", rawURL: "http://example.com"},
-		&Sling{queryStructs: make([]interface{}, 0)},
-		&Sling{queryStructs: []interface{}{paramsA}},
-		&Sling{queryStructs: []interface{}{paramsA, paramsB}},
-		&Sling{bodyProvider: fakeBodyProvider},
-		&Sling{bodyProvider: fakeBodyProvider},
-		&Sling{bodyProvider: nil},
+		{httpClient: &http.Client{}, method: "GET", rawURL: "http://example.com"},
+		{httpClient: nil, method: "", rawURL: "http://example.com"},
+		{queryStructs: make([]interface{}, 0)},
+		{queryStructs: []interface{}{paramsA}},
+		{queryStructs: []interface{}{paramsA, paramsB}},
+		{bodyProvider: fakeBodyProvider},
+		{bodyProvider: fakeBodyProvider},
+		{bodyProvider: nil},
 		New().Add("Content-Type", "application/json"),
 		New().Add("A", "B").Add("a", "c").New(),
 		New().Add("A", "B").New().Add("a", "c"),
@@ -222,14 +214,14 @@ func TestAddHeader(t *testing.T) {
 		sling          *Sling
 		expectedHeader map[string][]string
 	}{
-		{New().Add("authorization", "OAuth key=\"value\""), map[string][]string{"Authorization": []string{"OAuth key=\"value\""}}},
+		{New().Add("authorization", "OAuth key=\"value\""), map[string][]string{"Authorization": {"OAuth key=\"value\""}}},
 		// header keys should be canonicalized
-		{New().Add("content-tYPE", "application/json").Add("User-AGENT", "sling"), map[string][]string{"Content-Type": []string{"application/json"}, "User-Agent": []string{"sling"}}},
+		{New().Add("content-tYPE", "application/json").Add("User-AGENT", "sling"), map[string][]string{"Content-Type": {"application/json"}, "User-Agent": {"sling"}}},
 		// values for existing keys should be appended
-		{New().Add("A", "B").Add("a", "c"), map[string][]string{"A": []string{"B", "c"}}},
+		{New().Add("A", "B").Add("a", "c"), map[string][]string{"A": {"B", "c"}}},
 		// Add should add to values for keys added by parent Slings
-		{New().Add("A", "B").Add("a", "c").New(), map[string][]string{"A": []string{"B", "c"}}},
-		{New().Add("A", "B").New().Add("a", "c"), map[string][]string{"A": []string{"B", "c"}}},
+		{New().Add("A", "B").Add("a", "c").New(), map[string][]string{"A": {"B", "c"}}},
+		{New().Add("A", "B").New().Add("a", "c"), map[string][]string{"A": {"B", "c"}}},
 	}
 	for _, c := range cases {
 		// type conversion from header to alias'd map for deep equality comparison
@@ -246,11 +238,11 @@ func TestSetHeader(t *testing.T) {
 		expectedHeader map[string][]string
 	}{
 		// should replace existing values associated with key
-		{New().Add("A", "B").Set("a", "c"), map[string][]string{"A": []string{"c"}}},
-		{New().Set("content-type", "A").Set("Content-Type", "B"), map[string][]string{"Content-Type": []string{"B"}}},
+		{New().Add("A", "B").Set("a", "c"), map[string][]string{"A": {"c"}}},
+		{New().Set("content-type", "A").Set("Content-Type", "B"), map[string][]string{"Content-Type": {"B"}}},
 		// Set should replace values received by copying parent Slings
-		{New().Set("A", "B").Add("a", "c").New(), map[string][]string{"A": []string{"B", "c"}}},
-		{New().Add("A", "B").New().Set("a", "c"), map[string][]string{"A": []string{"c"}}},
+		{New().Set("A", "B").Add("a", "c").New(), map[string][]string{"A": {"B", "c"}}},
+		{New().Add("A", "B").New().Set("a", "c"), map[string][]string{"A": {"c"}}},
 	}
 	for _, c := range cases {
 		// type conversion from Header to alias'd map for deep equality comparison
@@ -555,20 +547,20 @@ func TestRequest_headers(t *testing.T) {
 		sling          *Sling
 		expectedHeader map[string][]string
 	}{
-		{New().Add("authorization", "OAuth key=\"value\""), map[string][]string{"Authorization": []string{"OAuth key=\"value\""}}},
+		{New().Add("authorization", "OAuth key=\"value\""), map[string][]string{"Authorization": {"OAuth key=\"value\""}}},
 		// header keys should be canonicalized
-		{New().Add("content-tYPE", "application/json").Add("User-AGENT", "sling"), map[string][]string{"Content-Type": []string{"application/json"}, "User-Agent": []string{"sling"}}},
+		{New().Add("content-tYPE", "application/json").Add("User-AGENT", "sling"), map[string][]string{"Content-Type": {"application/json"}, "User-Agent": {"sling"}}},
 		// values for existing keys should be appended
-		{New().Add("A", "B").Add("a", "c"), map[string][]string{"A": []string{"B", "c"}}},
+		{New().Add("A", "B").Add("a", "c"), map[string][]string{"A": {"B", "c"}}},
 		// Add should add to values for keys added by parent Slings
-		{New().Add("A", "B").Add("a", "c").New(), map[string][]string{"A": []string{"B", "c"}}},
-		{New().Add("A", "B").New().Add("a", "c"), map[string][]string{"A": []string{"B", "c"}}},
+		{New().Add("A", "B").Add("a", "c").New(), map[string][]string{"A": {"B", "c"}}},
+		{New().Add("A", "B").New().Add("a", "c"), map[string][]string{"A": {"B", "c"}}},
 		// Add and Set
-		{New().Add("A", "B").Set("a", "c"), map[string][]string{"A": []string{"c"}}},
-		{New().Set("content-type", "A").Set("Content-Type", "B"), map[string][]string{"Content-Type": []string{"B"}}},
+		{New().Add("A", "B").Set("a", "c"), map[string][]string{"A": {"c"}}},
+		{New().Set("content-type", "A").Set("Content-Type", "B"), map[string][]string{"Content-Type": {"B"}}},
 		// Set should replace values received by copying parent Slings
-		{New().Set("A", "B").Add("a", "c").New(), map[string][]string{"A": []string{"B", "c"}}},
-		{New().Add("A", "B").New().Set("a", "c"), map[string][]string{"A": []string{"c"}}},
+		{New().Set("A", "B").Add("a", "c").New(), map[string][]string{"A": {"B", "c"}}},
+		{New().Add("A", "B").New().Set("a", "c"), map[string][]string{"A": {"c"}}},
 	}
 	for _, c := range cases {
 		req, _ := c.sling.Request()
@@ -626,7 +618,6 @@ func TestDo_onSuccess(t *testing.T) {
 	model := new(FakeModel)
 	apiError := new(APIError)
 	resp, err := sling.Do(req, model, apiError)
-
 	if err != nil {
 		t.Errorf("expected nil, got %v", err)
 	}
@@ -654,7 +645,6 @@ func TestDo_onSuccessWithNilValue(t *testing.T) {
 
 	apiError := new(APIError)
 	resp, err := sling.Do(req, nil, apiError)
-
 	if err != nil {
 		t.Errorf("expected nil, got %v", err)
 	}
@@ -680,7 +670,6 @@ func TestDo_noContent(t *testing.T) {
 	model := new(FakeModel)
 	apiError := new(APIError)
 	resp, err := sling.Do(req, model, apiError)
-
 	if err != nil {
 		t.Errorf("expected nil, got %v", err)
 	}
@@ -715,7 +704,6 @@ func TestDo_onFailure(t *testing.T) {
 	model := new(FakeModel)
 	apiError := new(APIError)
 	resp, err := sling.Do(req, model, apiError)
-
 	if err != nil {
 		t.Errorf("expected nil, got %v", err)
 	}
@@ -744,7 +732,6 @@ func TestDo_onFailureWithNilValue(t *testing.T) {
 
 	model := new(FakeModel)
 	resp, err := sling.Do(req, model, nil)
-
 	if err != nil {
 		t.Errorf("expected nil, got %v", err)
 	}
@@ -757,39 +744,70 @@ func TestDo_onFailureWithNilValue(t *testing.T) {
 	}
 }
 
+func TestByteSreamer_failed(t *testing.T) {
+	tests := map[string]struct {
+		resp *http.Response
+		v    any
+	}{
+		"v is not io.Writer": {
+			&http.Response{
+				Body:          io.NopCloser(strings.NewReader("some response text")),
+				ContentLength: -1,
+			},
+			&struct{}{},
+		},
+		"response body ready error": {
+			&http.Response{
+				Body: io.NopCloser(&mockReader{
+					ReadFn: func(b []byte) (int, error) { return 0, fmt.Errorf("some io error") },
+				}),
+				ContentLength: -1,
+			},
+			&bytes.Buffer{},
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			err := ByteStreamer{}.Decode(test.resp, test.v)
+			if err == nil {
+				t.Errorf("expected non nil error")
+			}
+		})
+	}
+}
+
 func TestReceive_success_nonDefaultDecoder(t *testing.T) {
 	client, mux, server := testServer()
 	defer server.Close()
-	mux.HandleFunc("/foo/submit", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/xml")
-		data := ` <response>
-                        <text>Some text</text>
-			<favorite_count>24</favorite_count>
-			<temperature>10.5</temperature>
-		</response>`
-		fmt.Fprintf(w, xml.Header)
-		fmt.Fprint(w, data)
+
+	expectedData := []byte{11, 22, 33, 44, 55}
+
+	mux.HandleFunc("/foo/file", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/octet-stream")
+		w.Write(expectedData)
 	})
 
-	endpoint := New().Client(client).Base("http://example.com/").Path("foo/").Post("submit")
+	endpoint := New().Client(client).Base("http://example.com/").Path("foo/").Get("file")
 
-	model := new(FakeModel)
-	apiError := new(APIError)
-	resp, err := endpoint.New().ResponseDecoder(xmlResponseDecoder{}).Receive(model, apiError)
+	success := &bytes.Buffer{}
+	failure := &bytes.Buffer{}
 
+	resp, err := endpoint.New().ResponseDecoder(ByteStreamer{}).Receive(success, failure)
 	if err != nil {
 		t.Errorf("expected nil, got %v", err)
 	}
+
 	if resp.StatusCode != 200 {
-		t.Errorf("expected %d, got %d", 200, resp.StatusCode)
+		t.Errorf("expected statu code: %d, got: %d", 200, resp.StatusCode)
 	}
-	expectedModel := &FakeModel{Text: "Some text", FavoriteCount: 24, Temperature: 10.5}
-	if !reflect.DeepEqual(expectedModel, model) {
-		t.Errorf("expected %v, got %v", expectedModel, model)
+
+	if failure.Len() != 0 {
+		t.Errorf("expected failure data to be empry; got: %v", failure.Bytes())
 	}
-	expectedAPIError := &APIError{}
-	if !reflect.DeepEqual(expectedAPIError, apiError) {
-		t.Errorf("failureV should be zero valued, exepcted %v, got %v", expectedAPIError, apiError)
+
+	if !reflect.DeepEqual(expectedData, success.Bytes()) {
+		t.Errorf("expected response data: %v; got: %v", expectedData, success.Bytes())
 	}
 }
 
@@ -810,7 +828,6 @@ func TestReceive_success(t *testing.T) {
 	model := new(FakeModel)
 	apiError := new(APIError)
 	resp, err := endpoint.New().QueryStruct(params).BodyForm(params).Receive(model, apiError)
-
 	if err != nil {
 		t.Errorf("expected nil, got %v", err)
 	}
@@ -842,7 +859,6 @@ func TestReceive_StatusOKNoContent(t *testing.T) {
 	model := new(FakeModel)
 	apiError := new(APIError)
 	resp, err := endpoint.New().BodyForm(params).Receive(model, apiError)
-
 	if err != nil {
 		t.Errorf("expected nil, got %v", err)
 	}
@@ -877,7 +893,6 @@ func TestReceive_failure(t *testing.T) {
 	model := new(FakeModel)
 	apiError := new(APIError)
 	resp, err := endpoint.New().QueryStruct(params).BodyForm(params).Receive(model, apiError)
-
 	if err != nil {
 		t.Errorf("expected nil, got %v", err)
 	}
@@ -904,7 +919,6 @@ func TestReceive_noContent(t *testing.T) {
 
 	endpoint := New().Client(client).Base("http://example.com/").Path("foo/").Head("submit")
 	resp, err := endpoint.New().Receive(nil, nil)
-
 	if err != nil {
 		t.Errorf("expected nil, got %v", err)
 	}
@@ -1009,4 +1023,16 @@ func assertPostForm(t *testing.T, expected map[string]string, req *http.Request)
 	if !reflect.DeepEqual(expectedValues, req.PostForm) {
 		t.Errorf("expected parameters %v, got %v", expected, req.PostForm)
 	}
+}
+
+// mockReader implements [io.Reader] to create custom IO readers behavior in tests.
+type mockReader struct {
+	ReadFn func([]byte) (int, error)
+}
+
+func (mr *mockReader) Read(p []byte) (n int, err error) {
+	if mr.ReadFn != nil {
+		return mr.ReadFn(p)
+	}
+	return 0, nil
 }
