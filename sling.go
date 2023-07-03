@@ -36,18 +36,20 @@ type Sling struct {
 	queryStructs []interface{}
 	// body provider
 	bodyProvider BodyProvider
-	// response decoder
-	responseDecoder ResponseDecoder
+	// response decoders
+	successDecoder ResponseDecoder
+	failureDecoder ResponseDecoder
 }
 
 // New returns a new Sling with an http DefaultClient.
 func New() *Sling {
 	return &Sling{
-		httpClient:      http.DefaultClient,
-		method:          "GET",
-		header:          make(http.Header),
-		queryStructs:    make([]interface{}, 0),
-		responseDecoder: jsonDecoder{},
+		httpClient:     http.DefaultClient,
+		method:         "GET",
+		header:         make(http.Header),
+		queryStructs:   make([]interface{}, 0),
+		successDecoder: jsonDecoder{},
+		failureDecoder: jsonDecoder{},
 	}
 }
 
@@ -70,13 +72,14 @@ func (s *Sling) New() *Sling {
 		headerCopy[k] = v
 	}
 	return &Sling{
-		httpClient:      s.httpClient,
-		method:          s.method,
-		rawURL:          s.rawURL,
-		header:          headerCopy,
-		queryStructs:    append([]interface{}{}, s.queryStructs...),
-		bodyProvider:    s.bodyProvider,
-		responseDecoder: s.responseDecoder,
+		httpClient:     s.httpClient,
+		method:         s.method,
+		rawURL:         s.rawURL,
+		header:         headerCopy,
+		queryStructs:   append([]interface{}{}, s.queryStructs...),
+		bodyProvider:   s.bodyProvider,
+		successDecoder: s.successDecoder,
+		failureDecoder: s.failureDecoder,
 	}
 }
 
@@ -339,12 +342,26 @@ func addHeaders(req *http.Request, header http.Header) {
 
 // Sending
 
-// ResponseDecoder sets the Sling's response decoder.
-func (s *Sling) ResponseDecoder(decoder ResponseDecoder) *Sling {
-	if decoder == nil {
-		return s
+// ResponseDecoder sets both success anf failure response decoders to dec.
+func (s *Sling) ResponseDecoder(dec ResponseDecoder) *Sling {
+	s.SuccessDecoder(dec)
+	s.FailureDecoder(dec)
+	return s
+}
+
+// SuccessDecoder sets success response decoder to dec.
+func (s *Sling) SuccessDecoder(dec ResponseDecoder) *Sling {
+	if dec != nil {
+		s.successDecoder = dec
 	}
-	s.responseDecoder = decoder
+	return s
+}
+
+// FailureDecoder sets failure response decoder to dec.
+func (s *Sling) FailureDecoder(dec ResponseDecoder) *Sling {
+	if dec != nil {
+		s.failureDecoder = dec
+	}
 	return s
 }
 
@@ -396,9 +413,9 @@ func (s *Sling) Do(req *http.Request, successV, failureV interface{}) (*http.Res
 		return resp, nil
 	}
 
-	// Decode from json
+	// Decode response
 	if successV != nil || failureV != nil {
-		err = decodeResponse(resp, s.responseDecoder, successV, failureV)
+		err = s.decodeResponse(resp, successV, failureV)
 	}
 	return resp, err
 }
@@ -408,14 +425,14 @@ func (s *Sling) Do(req *http.Request, successV, failureV interface{}) (*http.Res
 // otherwise. If the successV or failureV argument to decode into is nil,
 // decoding is skipped.
 // Caller is responsible for closing the resp.Body.
-func decodeResponse(resp *http.Response, decoder ResponseDecoder, successV, failureV interface{}) error {
+func (s *Sling) decodeResponse(resp *http.Response, successV, failureV interface{}) error {
 	if code := resp.StatusCode; 200 <= code && code <= 299 {
 		if successV != nil {
-			return decoder.Decode(resp, successV)
+			return s.successDecoder.Decode(resp, successV)
 		}
 	} else {
 		if failureV != nil {
-			return decoder.Decode(resp, failureV)
+			return s.failureDecoder.Decode(resp, failureV)
 		}
 	}
 	return nil
