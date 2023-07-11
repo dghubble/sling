@@ -204,7 +204,15 @@ func (s *Sling) Path(path string) *Sling {
 	pathURL, pathErr := url.Parse(path)
 	if baseErr == nil && pathErr == nil {
 		s.rawURL = baseURL.ResolveReference(pathURL).String()
-		return s
+	}
+	return s
+}
+
+// Extend simply extends the rawURL by appending path to it using [url.JoinPath].
+// If parsing error occurs, the rawURL is left unmodified.
+func (s *Sling) Extend(path string) *Sling {
+	if u, err := url.JoinPath(s.rawURL, path); err == nil {
+		s.rawURL = u
 	}
 	return s
 }
