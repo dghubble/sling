@@ -827,6 +827,40 @@ func TestReceive_success(t *testing.T) {
 	}
 }
 
+func TestReceiveContext_success(t *testing.T) {
+	client, mux, server := testServer()
+	defer server.Close()
+	mux.HandleFunc("/foo/submit", func(w http.ResponseWriter, r *http.Request) {
+		assertMethod(t, "POST", r)
+		assertQuery(t, map[string]string{"kind_name": "vanilla", "count": "11"}, r)
+		assertPostForm(t, map[string]string{"kind_name": "vanilla", "count": "11"}, r)
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"text": "Some text", "favorite_count": 24}`)
+	})
+
+	endpoint := New().Client(client).Base("http://example.com/").Path("foo/").Post("submit")
+	// encode url-tagged struct in query params and as post body for testing purposes
+	params := FakeParams{KindName: "vanilla", Count: 11}
+	model := new(FakeModel)
+	apiError := new(APIError)
+	resp, err := endpoint.New().QueryStruct(params).BodyForm(params).ReceiveContext(context.Background(), model, apiError)
+
+	if err != nil {
+		t.Errorf("expected nil, got %v", err)
+	}
+	if resp.StatusCode != 200 {
+		t.Errorf("expected %d, got %d", 200, resp.StatusCode)
+	}
+	expectedModel := &FakeModel{Text: "Some text", FavoriteCount: 24}
+	if !reflect.DeepEqual(expectedModel, model) {
+		t.Errorf("expected %v, got %v", expectedModel, model)
+	}
+	expectedAPIError := &APIError{}
+	if !reflect.DeepEqual(expectedAPIError, apiError) {
+		t.Errorf("failureV should be zero valued, exepcted %v, got %v", expectedAPIError, apiError)
+	}
+}
+
 func TestReceive_StatusOKNoContent(t *testing.T) {
 	client, mux, server := testServer()
 	defer server.Close()
@@ -916,6 +950,17 @@ func TestReceive_noContent(t *testing.T) {
 func TestReceive_errorCreatingRequest(t *testing.T) {
 	expectedErr := errors.New("json: unsupported value: +Inf")
 	resp, err := New().BodyJSON(FakeModel{Temperature: math.Inf(1)}).Receive(nil, nil)
+	if err == nil || err.Error() != expectedErr.Error() {
+		t.Errorf("expected %v, got %v", expectedErr, err)
+	}
+	if resp != nil {
+		t.Errorf("expected nil resp, got %v", resp)
+	}
+}
+
+func TestReceiveContext_errorCreatingRequest(t *testing.T) {
+	expectedErr := errors.New("json: unsupported value: +Inf")
+	resp, err := New().BodyJSON(FakeModel{Temperature: math.Inf(1)}).ReceiveContext(context.Background(), nil, nil)
 	if err == nil || err.Error() != expectedErr.Error() {
 		t.Errorf("expected %v, got %v", expectedErr, err)
 	}

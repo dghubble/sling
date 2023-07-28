@@ -1,6 +1,7 @@
 package sling
 
 import (
+	"context"
 	"encoding/base64"
 	"io"
 	"net/http"
@@ -356,6 +357,14 @@ func (s *Sling) ReceiveSuccess(successV interface{}) (*http.Response, error) {
 	return s.Receive(successV, nil)
 }
 
+// ReceiveSuccess creates a new HTTP request and returns the response. Success
+// responses (2XX) are JSON decoded into the value pointed to by successV.
+// Any error creating the request, sending it, or decoding a 2XX response
+// is returned.
+func (s *Sling) ReceiveSuccessContext(ctx context.Context, successV interface{}) (*http.Response, error) {
+	return s.ReceiveContext(ctx, successV, nil)
+}
+
 // Receive creates a new HTTP request and returns the response. Success
 // responses (2XX) are JSON decoded into the value pointed to by successV and
 // other responses are JSON decoded into the value pointed to by failureV.
@@ -368,6 +377,22 @@ func (s *Sling) Receive(successV, failureV interface{}) (*http.Response, error) 
 	if err != nil {
 		return nil, err
 	}
+	return s.Do(req, successV, failureV)
+}
+
+// ReceiveContext creates a new HTTP request and returns the response. Success
+// responses (2XX) are JSON decoded into the value pointed to by successV and
+// other responses are JSON decoded into the value pointed to by failureV.
+// If the status code of response is 204(no content) or the Content-Lenght is 0,
+// decoding is skipped. Any error creating the request, sending it, or decoding
+// the response is returned.
+// ReceiveContext is shorthand for calling Request and Do.
+func (s *Sling) ReceiveContext(ctx context.Context, successV, failureV interface{}) (*http.Response, error) {
+	req, err := s.Request()
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
 	return s.Do(req, successV, failureV)
 }
 
