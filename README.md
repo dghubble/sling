@@ -280,6 +280,7 @@ func (s *IssueService) ListByRepo(owner, repo string, params *IssueListParams) (
 * Swagger Generator [swagger-api/swagger-codegen](https://github.com/swagger-api/swagger-codegen)
 * Twitter [dghubble/go-twitter](https://github.com/dghubble/go-twitter)
 * Stacksmith [jesustinoco/go-smith](https://github.com/jesustinoco/go-smith)
+* Spotify [omegastreamtv/Spotify](https://github.com/omegastreamtv/Spotify)
 
 Create a Pull Request to add a link to your own API.
 
