@@ -4,6 +4,10 @@ Notable changes between releases.
 
 ## Latest
 
+## v1.4.2
+
+* Update Go module dependencies
+
 ## v1.4.1
 
 * Update minimum Go version to v1.18 ([#76](https://github.com/dghubble/sling/pull/76))
