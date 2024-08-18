@@ -13,7 +13,7 @@ Slings store HTTP Request properties to simplify sending requests and decoding r
 ### Features
 
 * Method Setters: Get/Post/Put/Patch/Delete/Head
-* Add or Set Request Headers
+* Add, Set or Del Request Headers
 * Base/Path: Extend a Sling for different endpoints
 * Encode structs into URL query parameters
 * Encode a form or JSON into the Request Body
@@ -60,7 +60,7 @@ req, err := sling.New().Post("http://upload.com/gophers")
 
 ### Headers
 
-`Add` or `Set` headers for requests created by a Sling.
+`Add`, `Set` or `Del` headers for requests created by a Sling.
 
 ```go
 s := sling.New().Base(baseUrl).Set("User-Agent", "Gophergram API Client")

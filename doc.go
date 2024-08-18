@@ -33,7 +33,7 @@ except they set the HTTP method too.
 
 # Headers
 
-Add or Set headers for requests created by a Sling.
+Add, Set or Del headers for requests created by a Sling.
 
 	s := sling.New().Base(baseUrl).Set("User-Agent", "Gophergram API Client")
 	req, err := s.New().Get("gophergram/list").Request()

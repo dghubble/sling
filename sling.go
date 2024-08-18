@@ -174,6 +174,13 @@ func (s *Sling) Set(key, value string) *Sling {
 	return s
 }
 
+// Del deletes the key, value pair in Headers, removing existing values
+// associated with key. Header keys are canonicalized.
+func (s *Sling) Del(key string) *Sling {
+	s.header.Del(key)
+	return s
+}
+
 // SetBasicAuth sets the Authorization header to use HTTP Basic Authentication
 // with the provided username and password. With HTTP Basic Authentication
 // the provided username and password are not encrypted.
