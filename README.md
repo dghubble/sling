@@ -60,11 +60,20 @@ req, err := sling.New().Post("http://upload.com/gophers")
 
 ### Headers
 
-`Add` or `Set` headers for requests created by a Sling.
+Use the `Add`, `Set`, or `Headers` methods to manage request headers.
 
 ```go
 s := sling.New().Base(baseUrl).Set("User-Agent", "Gophergram API Client")
 req, err := s.New().Get("gophergram/list").Request()
+```
+
+```go
+headers := map[string]interface{}{
+    "Content-Type": "application/json",
+    "Accept":       []string{"application/json", "text/html"},
+}
+
+req, err := sling.New().Base(baseUrl).Headers(headers).Get("gophergram/list").Request()
 ```
 
 ### Query

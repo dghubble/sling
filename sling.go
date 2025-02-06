@@ -181,6 +181,46 @@ func (s *Sling) SetBasicAuth(username, password string) *Sling {
 	return s.Set("Authorization", "Basic "+basicAuth(username, password))
 }
 
+// Headers sets the headers for the Sling object.
+//
+// This function accepts a map of headers, where the key is a string (header name),
+// and the value can either be a string (a single header value) or a slice of strings (multiple values for a single header).
+// Based on the type of the value, it calls the appropriate methods:
+// - If the value is a string, it uses the `Set` method to set the header.
+// - If the value is a slice of strings, it uses the `Add` method to add multiple values for the same header.
+//
+// Example usage:
+//
+// // Declare the headers map separately
+//
+//	headers := map[string]interface{}{
+//	    "Content-Type": "application/json",
+//	    "Accept":       []string{"application/json", "text/html"},
+//	}
+//
+// // Pass the map to the Headers function
+// req, err := sling.New().Get("https://example.com").Headers(headers).Request()
+// client.Do(req)
+//
+// After calling the above code:
+// - The "Content-Type" header will be set to "application/json"
+// - The "Accept" header will have two values: "application/json" and "text/html"
+//
+// If the value for a header has an unsupported type, the message "Unknown type" will be printed.
+func (s *Sling) Headers(headers map[string]interface{}) *Sling {
+	for key, value := range headers {
+		switch v := value.(type) {
+		case string:
+			s.Set(key, v)
+		case []string:
+			for _, _v := range v {
+				s.Add(key, _v)
+			}
+		}
+	}
+	return s
+}
+
 // basicAuth returns the base64 encoded username:password for basic auth copied
 // from net/http.
 func basicAuth(username, password string) string {
