@@ -963,6 +963,29 @@ func TestReuseTcpConnections(t *testing.T) {
 	}
 }
 
+func TestHeaders(t *testing.T) {
+	s := New()
+	headers := map[string]interface{}{
+		"Content-Type":  "application/json",
+		"X-Custom-List": []string{"value1", "value2"},
+	}
+
+	s.Headers(headers)
+
+	req, _ := s.Request()
+	if req != nil {
+		if req.Header.Get("Content-Type") != "application/json" {
+			t.Errorf("Expected Content-Type to be application/json, got %s", req.Header.Get("Content-Type"))
+		}
+		values := req.Header.Values("X-Custom-List")
+		if len(values) != 2 || values[0] != "value1" || values[1] != "value2" {
+			t.Errorf("Expected X-Custom-List to be [value1 value2], got %v", values)
+		}
+	} else {
+		t.Errorf("Expected non-nil request")
+	}
+}
+
 // Testing Utils
 
 // testServer returns an http Client, ServeMux, and Server. The client proxies
