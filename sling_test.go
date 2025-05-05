@@ -580,6 +580,23 @@ func TestRequest_headers(t *testing.T) {
 	}
 }
 
+func TestRequestCtx_contextIsSet(t *testing.T) {
+	// Create a simple sling with a base URL
+	sling := New().Base("http://a.io/")
+
+	ctx := context.Background()
+	req, err := sling.RequestCtx(ctx)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Check that the request has the same context we provided
+	if req.Context() != ctx {
+		t.Error("expected request context to be the same as provided context")
+	}
+}
+
 func TestAddQueryStructs(t *testing.T) {
 	cases := []struct {
 		rawurl       string

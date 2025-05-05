@@ -1,6 +1,7 @@
 package sling
 
 import (
+	"context"
 	"encoding/base64"
 	"io"
 	"net/http"
@@ -302,6 +303,16 @@ func (s *Sling) Request() (*http.Request, error) {
 	return req, err
 }
 
+// RequestCtx returns a new http.Request created with the Sling properties and the given context.
+func (s *Sling) RequestCtx(ctx context.Context) (*http.Request, error) {
+	req, err := s.Request()
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	return req, nil
+}
+
 // addQueryStructs parses url tagged query structs using go-querystring to
 // encode them to url.Values and format them onto the url.RawQuery. Any
 // query parsing or encoding errors are returned.
@@ -356,6 +367,11 @@ func (s *Sling) ReceiveSuccess(successV interface{}) (*http.Response, error) {
 	return s.Receive(successV, nil)
 }
 
+// ReceiveSuccessCtx is like ReceiveSuccess but add context.Context to the request.
+func (s *Sling) ReceiveSuccessCtx(ctx context.Context, successV interface{}) (*http.Response, error) {
+	return s.ReceiveCtx(ctx, successV, nil)
+}
+
 // Receive creates a new HTTP request and returns the response. Success
 // responses (2XX) are JSON decoded into the value pointed to by successV and
 // other responses are JSON decoded into the value pointed to by failureV.
@@ -365,6 +381,15 @@ func (s *Sling) ReceiveSuccess(successV interface{}) (*http.Response, error) {
 // Receive is shorthand for calling Request and Do.
 func (s *Sling) Receive(successV, failureV interface{}) (*http.Response, error) {
 	req, err := s.Request()
+	if err != nil {
+		return nil, err
+	}
+	return s.Do(req, successV, failureV)
+}
+
+// ReceiveCtx is like Receive but add context.Context to the request.
+func (s *Sling) ReceiveCtx(ctx context.Context, successV, failureV interface{}) (*http.Response, error) {
+	req, err := s.RequestCtx(ctx)
 	if err != nil {
 		return nil, err
 	}
