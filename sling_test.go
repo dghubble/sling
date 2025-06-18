@@ -1010,3 +1010,40 @@ func assertPostForm(t *testing.T, expected map[string]string, req *http.Request)
 		t.Errorf("expected parameters %v, got %v", expected, req.PostForm)
 	}
 }
+
+func TestRequest_hostHeader(t *testing.T) {
+	cases := []struct {
+		sling        *Sling
+		expectedHost string
+	}{
+		// Test setting Host header
+		{New().Add("Host", "example.com"), "example.com"},
+		// Test setting Host header with port
+		{New().Add("Host", "example.com:8080"), "example.com:8080"},
+		// Test empty Host header (should not panic)
+		{New().Add("Host", ""), ""},
+		// Test multiple Host headers (should use first value)
+		{New().Add("Host", "first.com").Add("Host", "second.com"), "first.com"},
+		// Test Host header with other headers
+		{New().Add("Content-Type", "application/json").Add("Host", "example.com"), "example.com"},
+		// Test Host header case insensitivity
+		{New().Add("host", "example.com"), "example.com"},
+		{New().Add("HOST", "example.com"), "example.com"},
+	}
+
+	for _, c := range cases {
+		req, err := c.sling.Request()
+		if err != nil {
+			t.Errorf("unexpected error: %v", err)
+			continue
+		}
+		if req.Host != c.expectedHost {
+			t.Errorf("expected Host %q, got %q", c.expectedHost, req.Host)
+		}
+		// Verify that Host header is not duplicated in Header map
+		if len(req.Header["Host"]) > 0 {
+			t.Errorf("Host header should not be in Header map, got %v", req.Header["Host"])
+		}
+	}
+}
+
