@@ -329,10 +329,17 @@ func addQueryStructs(reqURL *url.URL, queryStructs []interface{}) error {
 
 // addHeaders adds the key, value pairs from the given http.Header to the
 // request. Values for existing keys are appended to the keys values.
+// If the key is "Host", the Host header is set to the first value.
 func addHeaders(req *http.Request, header http.Header) {
 	for key, values := range header {
-		for _, value := range values {
-			req.Header.Add(key, value)
+		if key == "Host" && len(values) > 0 {
+			// For Host header, only set the Host field directly
+			req.Host = values[0]
+		} else {
+			// For all other headers, add them to the request header
+			for _, value := range values {
+				req.Header.Add(key, value)
+			}
 		}
 	}
 }
