@@ -64,10 +64,9 @@ func New() *Sling {
 // Note that query and body values are copied so if pointer values are used,
 // mutating the original value will mutate the value within the child Sling.
 func (s *Sling) New() *Sling {
-	// copy Headers pairs into new Header map
-	headerCopy := make(http.Header)
-	for k, v := range s.header {
-		headerCopy[k] = v
+	headerCopy := s.header.Clone()
+	if headerCopy == nil {
+		headerCopy = make(http.Header)
 	}
 	return &Sling{
 		httpClient:      s.httpClient,
