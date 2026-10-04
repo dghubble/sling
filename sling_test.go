@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"reflect"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 )
@@ -112,6 +113,66 @@ func TestSlingNew(t *testing.T) {
 		// body should be copied
 		if child.bodyProvider != sling.bodyProvider {
 			t.Errorf("expected %v, got %v", sling.bodyProvider, child.bodyProvider)
+		}
+	}
+}
+
+func TestSlingNewHeaderIsolation(t *testing.T) {
+	parent := New().Get("https://example.com")
+	parent.header["X-Value"] = append(make([]string, 0, 8), "first", "second", "third")
+	left := parent.New().Add("X-Value", "left")
+	right := parent.New().Add("X-Value", "right")
+	parent.Add("X-Value", "parent")
+	grandchild := left.New().Add("X-Value", "grandchild")
+
+	cases := []struct {
+		name  string
+		sling *Sling
+		want  []string
+	}{
+		{"parent", parent, []string{"first", "second", "third", "parent"}},
+		{"left", left, []string{"first", "second", "third", "left"}},
+		{"right", right, []string{"first", "second", "third", "right"}},
+		{"grandchild", grandchild, []string{"first", "second", "third", "left", "grandchild"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			req, err := c.sling.Request()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := req.Header.Values("X-Value"); !reflect.DeepEqual(got, c.want) {
+				t.Errorf("expected header values %v, got %v", c.want, got)
+			}
+		})
+	}
+}
+
+func TestSlingNewConcurrentHeaders(t *testing.T) {
+	parent := New().Get("https://example.com")
+	parent.header["X-Value"] = append(make([]string, 0, 8), "first", "second", "third")
+	children := []*Sling{parent.New(), parent.New()}
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	for i, child := range children {
+		wg.Add(1)
+		go func(i int, child *Sling) {
+			defer wg.Done()
+			<-start
+			child.Add("X-Value", fmt.Sprintf("child-%d", i))
+		}(i, child)
+	}
+	close(start)
+	wg.Wait()
+
+	for i, child := range children {
+		req, err := child.Request()
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := []string{"first", "second", "third", fmt.Sprintf("child-%d", i)}
+		if got := req.Header.Values("X-Value"); !reflect.DeepEqual(got, want) {
+			t.Errorf("child %d: expected header values %v, got %v", i, want, got)
 		}
 	}
 }
